@@ -25,13 +25,26 @@ class ApiObject():
 
     def get_api_request_fields(self):
         # 1. get from component / schemas & get characteristics
-        self.get_schemas()
-        # 2. Create all field name found in schemas
-        self.get_field_names_from_schemas()
+        self.get_fields_from_schemas()
         # 4. get from path command (get, put, params), asssociate path &  characteristics
         self.get_fields_from_path_cmd()
 
-    def get_schemas(self):
+    def parse_schema_type_object(self, schema_name, schema_specs):
+        # Loop through all fields forr this schema object definition
+        for field_name, properties in schema_specs.get("properties",{}).items():
+            self.schemas_dict[schema_name].fields.append(field_name)                 # Add field_name to the list of fields associatedto this schema
+            if field_name not in self.request_fields_dict:                           # Create new field object if not exists yet
+                self.request_fields_dict[field_name] = ApiRequestField(field_name)
+            self.request_fields_dict[field_name].add_schema(schema_name)
+            self.request_fields_dict[field_name].add_properties(properties)
+        
+        for field_name in schema_specs.get("required",[]):                          # Flag all fields specified as required
+            self.request_fields_dict[field_name].required = True
+        
+        for field_name, field_value in schema_specs.get("example",{}).items():       # Add sample values
+            self.request_fields_dict[field_name].add_sample_value
+
+    def get_fields_from_schemas(self):
        for schema_name_short, schema_specs in self.api_content.get("components",{}).get("schemas",{}).items():
             # Create Param File Object if not exists
             schema_name = "#/components/schemas/" + schema_name_short
@@ -42,26 +55,14 @@ class ApiObject():
             schema_lst = schema_specs.get("allOf",None) or schema_specs.get("oneOf",None)
             if schema_type:
                 if schema_type == "object":
-                    # Loop through all fields forr this schema object definition
-                    for field_name, properties in schema_specs.get("properties",{}).items():
-                        self.schemas_dict[schema_name].fields.append(field_name)                 # Add field_name to the list of fields associatedto this schema
-                        if field_name not in self.request_fields_dict:                           # Create new field object if not exists yet
-                            self.request_fields_dict[field_name] = ApiRequestField(field_name)
-                        self.request_fields_dict[field_name].add_schema(schema_name)
-                        self.request_fields_dict[field_name].add_properties(properties)
-                    
-                    for field_name in schema_specs.get("required",[]):                          # Flag all fields specified as required
-                        self.request_fields_dict[field_name].required = True
-                    
-                    for field_name, field_value in schema_specs.get("example",{}).items():       # Add sample values
-                        self.request_fields_dict[field_name].add_sample_value
+                    self.parse_schema_type_object(schema_name, schema_specs)
                 elif schema_type == "string":
-                    # skip as thsi represent a format for fields but not a field itself.
-                    # eventually retrieve sample values
+                    # skip as this represents a format for fields but not a field itself.
+                    # TODO: eventually retrieve sample values
                     logging.debug(f"{schema_name} of type '{schema_type}' not supported/parsed")
                 elif schema_type == "array":
-                    # skip as thsi represent a format for fields but not a field itself.
-                    # eventually retrieve sample values
+                    # skip as this represents a format for fields but not a field itself.
+                    # TODO: eventually retrieve sample values
                     logging.debug(f"{schema_name} of type '{schema_type}' not supported/parsed")
                 else:
                     logging.warning(f"{schema_name} of type '{schema_type}' not supported/parsed")
@@ -69,8 +70,8 @@ class ApiObject():
                 logging.warning(f"{schema_name} with allOf / oneOf")
 
             else:
-                #TODO; log other type of schema
-                pass
+                logging.warning(f"Schema '{schema_name}' doesn't have 1 of the following properties ['type', 'oneOf', 'allOf']\ntype='object' format assumed. Details of schema here after:\n{schema_specs}")
+                self.parse_schema_type_object(schema_name, schema_specs)
 
     def get_field_names_from_schemas(self):
         pass
@@ -213,7 +214,7 @@ class ApiRequestField():
         self.paths:list[str] = []
         self.properties:list[dict] = []
         self.sample_values:list[str] = []
-        self.required:False
+        self.required:bool = False
     
     def add_path(self, path=""):       
         if path and path not in self.paths:
@@ -277,6 +278,20 @@ if __name__ == "__main__":
     #             print(f"      {k}:{v}")
     #         print()
   
+    ### Print request fields in a structured way / tree
+    #####################################################
+    print("-" * 25, "request_fields_dict", "-" * 25)
+    print (sorted(oss.request_fields_dict))
+    print()
+    for field_name, field_object in sorted(oss.request_fields_dict.items()):
+        print(f"{field_name}:")
+        print(f"   Required: {field_object.required}")
+        print(f"   Paths: {field_object.paths}")
+        print(f"   Properties:")
+        for properties in field_object.properties:
+            for k,v in properties.items():
+                print(f"      {k}:{v}")
+            print()
 
     """
     ApenAPI Terminology:
