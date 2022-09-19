@@ -20,10 +20,10 @@ class ApiObject():
         self.schemas_dict:dict[str, ApiSchema] = {}          # dictionary of Schemas with associated fields
         self.request_fields_dict:dict[str, ApiRequestField] = {}    # dictionary of request fields with associated paths & associated & characteristics
         self.get_api_params()
-        # TODO: get fields from paths request/response  + also schemas
         self.get_api_request_fields()
 
     def get_api_request_fields(self):
+        #TODO: ongoing
         # 1. get from component / schemas & get characteristics
         self.get_fields_from_schemas()
         # 4. get from path command (get, put, params), asssociate path &  characteristics
@@ -72,9 +72,6 @@ class ApiObject():
             else:
                 logging.warning(f"Schema '{schema_name}' doesn't have 1 of the following properties ['type', 'oneOf', 'allOf']\ntype='object' format assumed. Details of schema here after:\n{schema_specs}")
                 self.parse_schema_type_object(schema_name, schema_specs)
-
-    def get_field_names_from_schemas(self):
-        pass
 
     def get_fields_from_path_cmd(self):
         # go to "responses/xxx/content" & "requestbody/content"
@@ -244,6 +241,7 @@ if __name__ == "__main__":
     # test_file = "api_doc/pet_store.yaml"
     # test_file = "api_doc/tid.json"
     # test_file = "api_doc/WhoisEnrichment.json"
+    # test_file = "api_doc/jikan.json"
     # test_file = "api_doc/github.yaml"
 
     with open(test_file, encoding="UTF-8", errors="ignore") as config_file:
@@ -290,6 +288,7 @@ if __name__ == "__main__":
     for field_name, field_object in sorted(oss.request_fields_dict.items()):
         print(f"{field_name}:")
         print(f"   Required: {field_object.required}")
+        print(f"   Schemas: {field_object.schemas}")
         print(f"   Paths: {field_object.paths}")
         print(f"   Properties: {field_object.properties}")
         print(f"   Sample Values: {field_object.sample_values}")
