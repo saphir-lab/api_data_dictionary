@@ -1,0 +1,92 @@
+######################## No schema reference #######################
+
+"requestBody": {
+    "content": {
+      "application/json": {
+        "schema": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "Parameters used to deregister a key for a given user.",
+            "required": [
+              "aaid",
+              "keyID"
+            ],
+            "properties": {
+              "aaid": {
+                "type": "string",
+                "description": "Authenticator Attestation ID.",
+                "maxLength": 9
+              },
+              "keyID": {
+                "type": "string",
+                "description": "Registration key identifier."
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": true
+  }
+
+######################## single schema reference #######################
+"requestBody": {
+    "content": {
+      "application/json": {
+        "schema": {
+          "$ref": "#/components/schemas/CreateUserInput"
+        }
+      }
+    },
+    "required": true
+  }
+###################################### multiple Schemas references##################
+"requestBody": {
+"content": {
+    "application/json": {
+    "schema": {
+        "oneOf": [
+        {
+            "$ref": "#/components/schemas/UnregisterUserInputEx"
+        },
+        {
+            "$ref": "#/components/schemas/AdaptiveUnregisterUserInput"
+        }
+        ],
+        "discriminator": {
+        "propertyName": "objectType"
+        }
+    },
+    "examples": {
+        "UnregisterUserInputEx": {
+        "value": {
+            "objectType": "UnregisterUserInputEx",
+            "cddc": {
+            "browserCDDC": {
+                "fingerprintRaw": "{browser:{\"userAgent\":Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36},support:{\"ajax\":true,\"boxModel\":undefined,\"changeBubbles\":undefined,\"checkClone\":true,\"checkOn\":true,\"cors\":true,\"cssFloat\":undefined,\"hrefNormalized\":undefined,\"htmlSerialize\":undefined,\"leadingWhitespace\":undefined,\"noCloneChecked\":true,\"noCloneEvent\":undefined,\"opacity\":undefined,\"optDisabled\":undefined,\"style\":undefined,\"submitBubbles\":undefined,\"tbody\":undefined},computer:{\"screenWidth\":2560,\"screenHeight\":1440,\"OS\":\"Microsoft Windows\",\"platform\":\"Win32\"},additional:{}}",
+                "fingerprintHash": "e96dadc9651f5fe8f071110eb174fe8e7a17a9d7a96b3b1980c13e5b4af3a4d7"
+            }
+            },
+            "clientIP": "192.168.0.1"
+        }
+        },
+        "AdaptiveUnregisterUserInput": {
+        "value": {
+            "objectType": "AdaptiveUnregisterUserInput",
+            "cddc": {
+            "browserCDDC": {
+                "fingerprintRaw": "{browser:{\"userAgent\":Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36},support:{\"ajax\":true,\"boxModel\":undefined,\"changeBubbles\":undefined,\"checkClone\":true,\"checkOn\":true,\"cors\":true,\"cssFloat\":undefined,\"hrefNormalized\":undefined,\"htmlSerialize\":undefined,\"leadingWhitespace\":undefined,\"noCloneChecked\":true,\"noCloneEvent\":undefined,\"opacity\":undefined,\"optDisabled\":undefined,\"style\":undefined,\"submitBubbles\":undefined,\"tbody\":undefined},computer:{\"screenWidth\":2560,\"screenHeight\":1440,\"OS\":\"Microsoft Windows\",\"platform\":\"Win32\"},additional:{}}",
+                "fingerprintHash": "e96dadc9651f5fe8f071110eb174fe8e7a17a9d7a96b3b1980c13e5b4af3a4d7"
+            }
+            },
+            "clientIP": "192.168.0.1",
+            "relationshipRef": "userid1",
+            "sessionID": "4ED23EA44F23"
+        }
+        }
+    }
+    }
+},
+"required": true
+}

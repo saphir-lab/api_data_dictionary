@@ -1,6 +1,7 @@
 #Standard Python Modules
-import re
 import json
+import logging
+import re
 from typing import Any
 
 #External Python Modules
@@ -16,10 +17,72 @@ class ApiObject():
         self.schemas:list[str] = self.get_api_schemas()
         self.param_ref_dict:dict[str, ApiParameterRef] = {}  # dictionary of param reference name with associated paths & associated & characteristics
         self.param_dict:dict[str, ApiParameterField] = {}    # dictionary of param with associated paths & associated & characteristics
+        self.schemas_dict:dict[str, ApiSchema] = {}          # dictionary of Schemas with associated characteristics
+        self.request_fields_dict:dict[str, ApiRequestField] = {}    # dictionary of request fields with associated paths & associated & characteristics
         self.get_api_params()
         # TODO: get fields from paths request/response  + also schemas
+        self.get_api_request_fields()
 
-       
+    def get_api_request_fields(self):
+        # 1. get from component / schemas & get characteristics
+        self.get_schemas()
+        # 2. Create all field name found in schemas
+        self.get_field_names_from_schemas()
+        # 4. get from path command (get, put, params), asssociate path &  characteristics
+        self.get_fields_from_path_cmd()
+
+    def get_schemas(self):
+       for schema_name_short, schema_specs in self.api_content.get("components",{}).get("schemas",{}).items():
+            # Create Param File Object if not exists
+            schema_name = "#/components/schemas/" + schema_name_short
+            if schema_name not in self.schemas_dict:
+                self.schemas_dict[schema_name]=ApiSchema(schema_name)
+            
+            schema_type = schema_specs.get("type",None)
+            schema_lst = schema_specs.get("allOf",None) or schema_specs.get("oneOf",None)
+            if schema_type:
+                if schema_type == "object":
+                    # Loop through all fields forr this schema object definition
+                    for field_name, properties in schema_specs.get("properties",{}).items():
+                        self.schemas_dict[schema_name].fields.append(field_name)                 # Add field_name to the list of fields associatedto this schema
+                        if field_name not in self.request_fields_dict:                           # Create new field object if not exists yet
+                            self.request_fields_dict[field_name] = ApiRequestField(field_name)
+                        self.request_fields_dict[field_name].add_schema(schema_name)
+                        self.request_fields_dict[field_name].add_properties(properties)
+                    
+                    for field_name in schema_specs.get("required",[]):                          # Flag all fields specified as required
+                        self.request_fields_dict[field_name].required = True
+                    
+                    for field_name, field_value in schema_specs.get("example",{}).items():       # Add sample values
+                        self.request_fields_dict[field_name].add_sample_value
+                elif schema_type == "string":
+                    # skip as thsi represent a format for fields but not a field itself.
+                    # eventually retrieve sample values
+                    logging.debug(f"{schema_name} of type '{schema_type}' not supported/parsed")
+                elif schema_type == "array":
+                    # skip as thsi represent a format for fields but not a field itself.
+                    # eventually retrieve sample values
+                    logging.debug(f"{schema_name} of type '{schema_type}' not supported/parsed")
+                else:
+                    logging.warning(f"{schema_name} of type '{schema_type}' not supported/parsed")
+            elif schema_lst:
+                logging.warning(f"{schema_name} with allOf / oneOf")
+
+            else:
+                #TODO; log other type of schema
+                pass
+
+    def get_field_names_from_schemas(self):
+        pass
+
+    def get_fields_from_path_cmd(self):
+        # go to "responses/xxx/content" & "requestbody/content"
+        # "requestbody/content/"application/json"/schema
+        #     - "type": "array"
+        #     - "$ref": "#/components/schemas/CreateUserInput"
+        #     - "oneOf": [{"$ref": "#/components/schemas/UnregisterUserInputEx"}, {"$ref": "#/components/schemas/AdaptiveUnregisterUserInput"}],
+        pass
+
     def get_api_info(self):
         api_info_dic = self.api_content.get("info",{})
         return api_info_dic.get("title", "") + " v" + api_info_dic.get("version", "")
@@ -131,9 +194,47 @@ class ApiParameterField():
         if spec and spec not in self.specs:
             self.specs.append(spec)
 
+class ApiSchema():
+    def __init__(self, schemaname):
+        self.schemaname:str = schemaname
+        self.fields:list[str] = []
+        self.paths:list[str] = []
+        # self.properties:list[dict] = []
+        # self.samples:list[dict] = []
+    
+    def add_path(self, path=""):       
+        if path and path not in self.paths:
+            self.paths.append(path)
 
+class ApiRequestField():
+    def __init__(self, fieldname):
+        self.fieldname:str = fieldname
+        self.schemas:list[str] = []
+        self.paths:list[str] = []
+        self.properties:list[dict] = []
+        self.sample_values:list[str] = []
+        self.required:False
+    
+    def add_path(self, path=""):       
+        if path and path not in self.paths:
+            self.paths.append(path)
+
+    def add_schema(self, schema=""):
+        if schema and schema not in self.schemas:
+            self.schemas.append(schema)
+    
+    def add_properties(self, properties={}):       
+        if properties and properties not in self.properties:
+            self.properties.append(properties)
+
+    def add_sample_value(self, sample_value=""):       
+        if sample_value and sample_value not in self.sample_values:
+            self.sample_values.append(sample_value)
+        
 if __name__ == "__main__":
     import yaml
+    logging.basicConfig(level=logging.DEBUG,format='%(asctime)s : %(levelname)s : %(message)s')
+
     test_file = "api_doc/oss.yaml"
     # test_file = "api_doc/pet_store.yaml"
     # test_file = "api_doc/tid.json"
@@ -161,17 +262,20 @@ if __name__ == "__main__":
     # for field_name, field_object in sorted(oss.param_dict.items()):
     #     print()
     #     print(field_object.fieldname, field_object.paths, field_object.specs)
-    print("-" * 25, "param_dict", "-" * 25)
-    print (sorted(oss.param_dict))
-    print()
-    for field_name, field_object in sorted(oss.param_dict.items()):
-        print(f"{field_name}:")
-        print(f"   Paths: {field_object.paths}")
-        print(f"   Specifications:")
-        for specs in field_object.specs:
-            for k,v in specs.items():
-                print(f"      {k}:{v}")
-            print()
+
+    ### Print parameters in a structured way / tree
+    ###############################################
+    # print("-" * 25, "param_dict", "-" * 25)
+    # print (sorted(oss.param_dict))
+    # print()
+    # for field_name, field_object in sorted(oss.param_dict.items()):
+    #     print(f"{field_name}:")
+    #     print(f"   Paths: {field_object.paths}")
+    #     print(f"   Specifications:")
+    #     for specs in field_object.specs:
+    #         for k,v in specs.items():
+    #             print(f"      {k}:{v}")
+    #         print()
   
 
     """
