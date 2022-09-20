@@ -197,7 +197,6 @@ class ApiObject():
             param_specs = ref_specs.specs
             param_name = param_specs.get("name","")
             if not param_name:
-                # TODO: print debug we have a param reference without name
                 logging.error(f"{method_name()} - parameter with no name: {param_specs}")
             else:
                 # Create Param File Object if not exists then add specifications
@@ -239,7 +238,6 @@ class ApiObject():
     
     def parse_schema_type_array(self, path="", schema_name="", schema_specs={}):
         schema_name = schema_specs.get("items", "").get("$ref", schema_name)
-        logging.error(f"{schema_name}, {path}")
         if schema_name:         # Verify there is a ref
             if schema_name not in self.schemas_dict:                          # Create new field object if not exists yet
                 self.schemas_dict[schema_name] = ApiSchema(schema_name)
@@ -247,7 +245,6 @@ class ApiObject():
 
             #BUG: Review as could be that fields are added afterwards (schema processed afterwards. Case of a schema refereing an other schema)
             for field in self.schemas_dict[schema_name].fields:               # Associate path to all fields of the schema
-                logging.error(f"{schema_name}, {field}, {path}")
                 if field not in self.request_fields_dict:                     # Create new field object if not exists yet
                     self.request_fields_dict[field] = ApiSchema(field)
                 self.request_fields_dict[field].add_path(path)  
