@@ -59,7 +59,7 @@ class ApiObject():
         logging.debug(f"{method_name()} - Start")
         self.get_fields_from_schemas()      # get from component/schemas & get characteristics
         self.get_fields_from_path_cmd()     # get from path command (get, put, params) then asssociate path & characteristics
-        logging.info(f"{method_name()} - {len(self.param_dict)} fields found from now.")
+        logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found in total.")
     
     def get_api_schemas(self):
         logging.debug(f"{method_name()} - Start")
@@ -117,9 +117,12 @@ class ApiObject():
                             logging.warning(f"{method_name()} - {full_path} - schema without $ref or type.")
                             logging.debug(f"{method_name()} - Schema details\n{body_schema}")
 
-        logging.info(f"{method_name()} - {len(self.param_dict)} fields found from now.")
+        logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found from now.")
 
     def get_fields_from_schemas(self):
+        #FIXME: case of schema field containing reference to schema.
+        # Need to process first all firls with characterics
+        # Then loop again on the one with $ref
         logging.debug(f"{method_name()} - Start")
         for schema_name_short, schema_specs in self.api_content.get("components",{}).get("schemas",{}).items():
             # Create Param File Object if not exists
@@ -151,7 +154,7 @@ class ApiObject():
                 logging.warning(f"{method_name()} - Schema '{schema_name}' doesn't have 1 of the following properties ['type', 'oneOf', 'allOf'] -> type='object' format assumed.")
                 logging.debug(f"{method_name()} - Schema '{schema_name}' details:\n{schema_specs}")
                 self.parse_schema_type_object(schema_name, schema_specs)
-        logging.info(f"{method_name()} - {len(self.param_dict)} fields found from now.")
+        logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found from now.")
 
     def get_param_from_path_cmd(self):
         logging.debug(f"{method_name()} - Start")
@@ -229,12 +232,7 @@ class ApiObject():
             if field_name not in self.request_fields_dict:                          # Create new field object if not exists yet
                 self.request_fields_dict[field_name] = ApiRequestField(field_name)
             self.request_fields_dict[field_name].required = True
-        
-        for field_name, field_value in schema_specs.get("example",{}).items():      # Add sample values
-            if field_name not in self.request_fields_dict:                          # Create new field object if not exists yet
-                self.request_fields_dict[field_name] = ApiRequestField(field_name)
-            self.request_fields_dict[field_name].add_sample_value(field_value)
-    
+            
     def parse_schema_type_array(self, path="", schema_name="", schema_specs={}):
         schema_name = schema_specs.get("items", "").get("$ref", schema_name)
         if schema_name:         # Verify there is a ref
@@ -242,7 +240,7 @@ class ApiObject():
                 self.schemas_dict[schema_name] = ApiSchema(schema_name)
             self.schemas_dict[schema_name].add_path(path)                     # Associate path to the schema
 
-            #BUG: Review as could be that fields are added afterwards (schema processed afterwards. Case of a schema refereing an other schema)
+            #FIXME: Review as could be that fields are added afterwards (schema processed afterwards. Case of a schema refereing an other schema)
             for field in self.schemas_dict[schema_name].fields:               # Associate path to all fields of the schema
                 if field not in self.request_fields_dict:                     # Create new field object if not exists yet
                     self.request_fields_dict[field] = ApiSchema(field)
@@ -295,7 +293,6 @@ class ApiRequestField():
         self.schemas:list[str] = []
         self.paths:list[str] = []
         self.properties:list[dict] = []
-        self.sample_values:list[str] = []
         self.required:bool = False
     
     def add_path(self, path=""):       
@@ -309,10 +306,6 @@ class ApiRequestField():
     def add_properties(self, properties={}):       
         if properties and properties not in self.properties:
             self.properties.append(properties)
-
-    def add_sample_value(self, sample_value=""):       
-        if sample_value and sample_value not in self.sample_values:
-            self.sample_values.append(sample_value)
         
 if __name__ == "__main__":
     import yaml
@@ -350,30 +343,31 @@ if __name__ == "__main__":
 
     ### Print parameters in a structured way / tree
     ###############################################
-    print("-" * 25, "param_dict", "-" * 25)
+    print("-" * 25, "param_dict summary", "-" * 25)
     print (sorted(oss.param_dict))
-    # print()
-    # for field_name, field_object in sorted(oss.param_dict.items()):
-    #     print(f"{field_name}:")
-    #     print(f"   Paths: {field_object.paths}")
-    #     print(f"   Specifications:")
-    #     for specs in field_object.specs:
-    #         for k,v in specs.items():
-    #             print(f"      {k}:{v}")
-    #         print()
+    print(f"{len(oss.param_dict)} parameters found.")
+    print("-" * 25, "param_dict details", "-" * 25)
+    for field_name, field_object in sorted(oss.param_dict.items()):
+        print(f"{field_name}:")
+        print(f"   Paths: {field_object.paths}")
+        print(f"   Specifications:")
+        for specs in field_object.specs:
+            for k,v in specs.items():
+                print(f"      {k}:{v}")
+            print()
   
     ### Print request fields in a structured way / tree
     #####################################################
-    print("-" * 25, "request_fields_dict", "-" * 25)
-    print (sorted(oss.request_fields_dict))
-    print()
+    print("-" * 25, "request_fields_dict summary", "-" * 25)
+    print(sorted(oss.request_fields_dict))
+    print(f"{len(oss.request_fields_dict)} request fields found.")
+    print("-" * 25, "request_fields_dict details", "-" * 25)
     for field_name, field_object in sorted(oss.request_fields_dict.items()):
         print(f"{field_name}:")
         print(f"   Required: {field_object.required}")
         print(f"   Schemas: {field_object.schemas}")
         print(f"   Paths: {field_object.paths}")
         print(f"   Properties: {field_object.properties}")
-        print(f"   Sample Values: {field_object.sample_values}")
 
     # print("-" * 25, "schemas_dict", "-" * 25)
     # print (sorted(oss.schemas_dict))
