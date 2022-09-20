@@ -135,17 +135,17 @@ class ApiObject():
                 elif schema_type == "string":
                     # skip as this represents a format for fields but not a field itself.
                     # TODO: schema_type=string - retrieve sample values
-                    logging.debug(f"{method_name()} - {schema_name} of type '{schema_type}' not supported/parsed")
+                    logging.debug(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
                 elif schema_type == "array":
                     # skip as this represents a format for fields but not a field itself.
                     # TODO: schema_type=array - retrieve sample values
                     self.parse_schema_type_array(path="", schema_name=schema_name, schema_specs=schema_specs)
-                    logging.info(f"{method_name()} - {schema_name} of type '{schema_type}' TO BE INVESTIGATED")
+                    logging.warning(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}'. May miss some fields in case referenced schema is defined after this one.")
                 else:
-                    logging.warning(f"{method_name()} - {schema_name} of type '{schema_type}' not supported/parsed")
+                    logging.warning(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
             elif schema_lst:
                 # TODO: allOf / oneOf
-                logging.debug(f"{method_name()} - {schema_name} with allOf / oneOf")
+                logging.debug(f"{method_name()} - Schema '{schema_name}' with allOf / oneOf")
 
             else:
                 logging.warning(f"{method_name()} - Schema '{schema_name}' doesn't have 1 of the following properties ['type', 'oneOf', 'allOf'] -> type='object' format assumed.")
