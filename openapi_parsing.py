@@ -109,7 +109,6 @@ class ApiObject():
                             if body_schema_type == "object":
                                 self.parse_schema_type_object(schema_name="", schema_specs=body_schema)
                             elif body_schema_type == "array":
-                                logging.info(f"{method_name()} - {full_path} - schema type '{body_schema_type}' TO BE INVESTIGATED")
                                 self.parse_schema_type_array(path=path, schema_name="", schema_specs=body_schema)
                             else:
                                 logging.warning(f"{method_name()} - {full_path} - schema type '{body_schema_type}' doesn't not contains field name. Considered as a bad practive for body part")
