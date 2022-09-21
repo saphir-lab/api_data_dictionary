@@ -241,11 +241,15 @@ class ApiObject():
             self.schemas_dict[schema_name].add_path(path)                     # Associate path to the schema
 
             #FIXME: Review as could be that fields are added afterwards (schema processed afterwards. Case of a schema refereing an other schema)
-            for field in self.schemas_dict[schema_name].fields:               # Associate path to all fields of the schema
-                if field not in self.request_fields_dict:                     # Create new field object if not exists yet
-                    self.request_fields_dict[field] = ApiSchema(field)
-                self.request_fields_dict[field].add_path(path)  
+            # if path:
+            #     for field in self.schemas_dict[schema_name].fields:               # Associate path to all fields of the schema
+            #         if field not in self.request_fields_dict:                     # Create new field object if not exists yet
+            #             self.request_fields_dict[field] = ApiSchema(field)
+            #     self.request_fields_dict[field].add_path(path)  
 
+    def associate_path_with_ref_fields(self):
+        pass
+    
     def to_json(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
         
@@ -331,15 +335,26 @@ if __name__ == "__main__":
     # print (oss.paths)
     # print("-" * 25, "schemas", "-" * 25)
     # print (oss.schemas)
-    # print("-" * 25, "param_ref_dict_items", "-" * 25)
-    # for field_name, field_object in sorted(oss.param_ref_dict.items()):
-    #     print(field_object.ref_name, field_object.specs)
+    print("-" * 25, "param_ref_dict_items", "-" * 25)
+    for field_name, field_object in sorted(oss.param_ref_dict.items()):
+        print(field_object.ref_name, field_object.specs)
     # print("-" * 25, "param_ref_dict", "-" * 25)
     # print (sorted(oss.param_ref_dict))
     # print("-" * 25, "param_dict_items", "-" * 25)
     # for field_name, field_object in sorted(oss.param_dict.items()):
     #     print()
     #     print(field_object.fieldname, field_object.paths, field_object.specs)
+
+    ### Print schema in a structured way / tree
+    ###############################################
+    print("-" * 25, "schemas_dict summary", "-" * 25)
+    print (sorted(oss.schemas_dict))
+    print(f"{len(oss.schemas_dict)} parameters found.")
+    print("-" * 25, "schemas_dict details", "-" * 25)
+    for schema_name, schema_object in sorted(oss.schemas_dict.items()):
+        print(f"Schema '{schema_name}':")
+        print(f"   Paths: {schema_object.paths}")
+        print(f"   Fields: {schema_object.fields}")
 
     ### Print parameters in a structured way / tree
     ###############################################
@@ -348,7 +363,7 @@ if __name__ == "__main__":
     print(f"{len(oss.param_dict)} parameters found.")
     print("-" * 25, "param_dict details", "-" * 25)
     for field_name, field_object in sorted(oss.param_dict.items()):
-        print(f"{field_name}:")
+        print(f"Param field '{field_name}':")
         print(f"   Paths: {field_object.paths}")
         print(f"   Specifications:")
         for specs in field_object.specs:
@@ -363,7 +378,7 @@ if __name__ == "__main__":
     print(f"{len(oss.request_fields_dict)} request fields found.")
     print("-" * 25, "request_fields_dict details", "-" * 25)
     for field_name, field_object in sorted(oss.request_fields_dict.items()):
-        print(f"{field_name}:")
+        print(f"Request field '{field_name}':")
         print(f"   Required: {field_object.required}")
         print(f"   Schemas: {field_object.schemas}")
         print(f"   Paths: {field_object.paths}")
