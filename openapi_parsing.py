@@ -57,7 +57,7 @@ class ApiObject():
 
     def get_api_request_fields(self):
         logging.debug(f"{method_name()} - Start")
-        self.get_fields_from_schemas()      # get from component/schemas & get characteristics
+        self.get_schemas_and_fields()      # get from component/schemas & get characteristics
         self.get_fields_from_path_cmd()     # get from path command (get, put, params) then asssociate path & characteristics
         logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found in total.")
     
@@ -76,13 +76,20 @@ class ApiObject():
         return sorted(api_servers_url_lst)    
   
     def get_fields_from_path_cmd(self):
+        # goals : add path to 
+        #       schemas found ($ref)
+        #       fields linked to that schema
+        #       fields not related to schema
+
         # go to "responses/xxx/content" & "requestbody/content"
         # "requestbody/content/"application/json"/schema
+        #     - "type": "object"
         #     - "type": "array"
         #     - "$ref": "#/components/schemas/CreateUserInput"
         #     - "oneOf": [{"$ref": "#/components/schemas/UnregisterUserInputEx"}, {"$ref": "#/components/schemas/AdaptiveUnregisterUserInput"}],
         logging.debug(f"{method_name()} - Start")
         for path in self.paths:
+            logging.debug(f"{method_name()} - Processing path '{path}'")
             for cmd, cmd_specs in self.api_content["paths"][path].items():
                 # cmd_specs can be an array in case body is using multiple templates
                 if type(cmd_specs) == dict:
@@ -101,60 +108,35 @@ class ApiObject():
                         body_schema_ref = body_schema.get("$ref", "")
                         full_path = f"{path}/{cmd}/requestBody/content/{media_type}"
 
+                        fields_to_add_path = []
                         if body_schema_ref:
-                            self.schemas_dict[body_schema_ref].add_path(path)                           # Associate path to the schema
-                            for field in self.schemas_dict[body_schema_ref].fields:                     # Associate path to all fields of the schema
-                                self.request_fields_dict.get(field, ApiRequestField).add_path(path)
-                        elif body_schema_type:                               
+                            self.schemas_dict[body_schema_ref].add_path(path)             # Associate path to the schema
+                            fields_to_add_path = self.schemas_dict[body_schema_ref].fields
+                        elif body_schema_type:                                       
                             if body_schema_type == "object":
-                                self.parse_schema_type_object(schema_name="", schema_specs=body_schema)
+                                fields_to_add_path = self.parse_schema_type_object(schema_name="", schema_specs=body_schema)
                             elif body_schema_type == "array":
-                                self.parse_schema_type_array(path=path, schema_name="", schema_specs=body_schema)
+                                fields_to_add_path = self.parse_schema_type_array(schema_name="", schema_specs=body_schema)
                             else:
                                 logging.warning(f"{method_name()} - {full_path} - schema type '{body_schema_type}' doesn't not contains field name. Considered as a bad practive for body part")
                                 logging.debug(f"{method_name()} - Schema details: {body_schema}")
                         else:
                             logging.warning(f"{method_name()} - {full_path} - schema without $ref or type.")
                             logging.debug(f"{method_name()} - Schema details\n{body_schema}")
+                        
+                        # Associate path to all fields of the schema
+                        logging.debug(f"{method_name()} - Add path {path} to fields {fields_to_add_path}")
+                        for field in fields_to_add_path:                     
+                            self.request_fields_dict.get(field, ApiRequestField(field)).add_path(path)
 
         logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found from now.")
 
-    def get_fields_from_schemas(self):
-        #FIXME: case of schema field containing reference to schema.
-        # Need to process first all firls with characterics
-        # Then loop again on the one with $ref
-        logging.debug(f"{method_name()} - Start")
-        for schema_name_short, schema_specs in self.api_content.get("components",{}).get("schemas",{}).items():
-            # Create Param File Object if not exists
+
+    def parse_one_schema(self, schema_name_short, schema_specs):
             schema_name = "#/components/schemas/" + schema_name_short
             if schema_name not in self.schemas_dict:
                 self.schemas_dict[schema_name]=ApiSchema(schema_name)
-            
-            schema_type = schema_specs.get("type",None)
-            schema_lst = schema_specs.get("allOf",None) or schema_specs.get("oneOf",None)
-            if schema_type:
-                if schema_type == "object":
-                    self.parse_schema_type_object(schema_name, schema_specs)
-                elif schema_type == "string":
-                    # skip as this represents a format for fields but not a field itself.
-                    # TODO: schema_type=string - retrieve sample values
-                    logging.debug(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
-                elif schema_type == "array":
-                    # skip as this represents a format for fields but not a field itself.
-                    # TODO: schema_type=array - retrieve sample values
-                    self.parse_schema_type_array(path="", schema_name=schema_name, schema_specs=schema_specs)
-                    logging.warning(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}'. May miss some fields in case referenced schema is defined after this one.")
-                else:
-                    logging.warning(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
-            elif schema_lst:
-                # TODO: allOf / oneOf
-                logging.debug(f"{method_name()} - Schema '{schema_name}' with allOf / oneOf")
-
-            else:
-                logging.warning(f"{method_name()} - Schema '{schema_name}' doesn't have 1 of the following properties ['type', 'oneOf', 'allOf'] -> type='object' format assumed.")
-                logging.debug(f"{method_name()} - Schema '{schema_name}' details:\n{schema_specs}")
-                self.parse_schema_type_object(schema_name, schema_specs)
-        logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found from now.")
+            self.parse_schema_specs(schema_name, schema_specs)                  
 
     def get_param_from_path_cmd(self):
         logging.debug(f"{method_name()} - Start")
@@ -218,38 +200,87 @@ class ApiObject():
             param_ref_dict[param_ref_name].add_spec(param_specs)
         return param_ref_dict
 
-    def parse_schema_type_object(self, schema_name, schema_specs):
-        # Loop through all fields forr this schema object definition
-        for field_name, properties in schema_specs.get("properties",{}).items():
-            if field_name not in self.request_fields_dict:                          # Create new field object if not exists yet
+    def parse_schema_specs(self, schema_name="", schema_specs={}):
+        schema_type = schema_specs.get("type",None)
+        schema_lst = schema_specs.get("allOf",None) or schema_specs.get("oneOf",None)
+        if schema_type:
+            if schema_type == "object":
+                self.parse_schema_type_object(schema_name, schema_specs)
+            elif schema_type == "string":
+                # skip as this represents a format for fields but not a field itself.
+                logging.debug(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
+            elif schema_type == "array":
+                self.parse_schema_type_array(schema_name, schema_specs)
+            else:
+                logging.warning(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
+        elif schema_lst:
+            # TODO: allOf / oneOf
+            logging.debug(f"{method_name()} - Schema '{schema_name}' with allOf / oneOf")
+
+        else:
+            logging.warning(f"{method_name()} - Schema '{schema_name}' doesn't have 1 of the following properties ['type', 'oneOf', 'allOf'] -> type='object' format assumed.")
+            logging.debug(f"{method_name()} - Schema '{schema_name}' details:\n{schema_specs}")
+            self.parse_schema_type_object(schema_name, schema_specs)
+    
+    def parse_one_schema_field(self, field_name, properties, schema_name):
+            #1. Create field if not exists
+            if field_name not in self.request_fields_dict:
                 self.request_fields_dict[field_name] = ApiRequestField(field_name)
+            #2. Link field to schema & schema to field
             if schema_name:
                 self.schemas_dict[schema_name].add_field(field_name)                    # Add field_name to the list of fields associated to this schema
                 self.request_fields_dict[field_name].add_schema(schema_name)
+            #3. Add field properties
             self.request_fields_dict[field_name].add_properties(properties)
+            #4. if properties contains schema reference, process that schema
+            ref=properties.get("$ref","")
+            if not ref:
+                ref=properties.get("items",{}).get("$ref","")
+            if ref:
+                # Get short name, retrieve specs, then process this schema if not yet done
+                ref_short= ref[ref.rfind('/')+1:]
+                logging.debug(f"Schema {schema_name} - Processing Schema reference {ref} --> {ref_short}")
+                schema_specs = self.api_content.get("components",{}).get("schemas",{}).get(ref_short,{})
+                if ref not in self.schemas_dict:
+                    self.parse_one_schema(schema_name_short=ref_short, schema_specs=schema_specs)
+                # add fields of referenced schema to current one
+                if schema_name:
+                    for field_ref in self.schemas_dict.get(ref,ApiSchema(ref)).fields:
+                        self.schemas_dict[schema_name].add_field(field_ref)                    # Add field_name to the list of fields associated to this schema
+                        self.request_fields_dict[field_ref].add_schema(schema_name)
+    
+    def get_schemas_and_fields(self):
+        logging.debug(f"{method_name()} - Start")
+        for schema_name_short, schema_specs in self.api_content.get("components",{}).get("schemas",{}).items():
+            # Create Param File Object if not exists
+            self.parse_one_schema(schema_name_short, schema_specs)
+        logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found from now.")
+
+    def parse_schema_type_object(self, schema_name, schema_specs):
+        fields_parsed=[]
+        # Loop through all fields for this schema object definition
+        for field_name, properties in schema_specs.get("properties",{}).items():
+            fields_parsed.append(field_name)
+            self.parse_one_schema_field(field_name, properties, schema_name)
         
         for field_name in schema_specs.get("required",[]):                          # Flag all fields specified as required
             if field_name not in self.request_fields_dict:                          # Create new field object if not exists yet
                 self.request_fields_dict[field_name] = ApiRequestField(field_name)
             self.request_fields_dict[field_name].required = True
+        return fields_parsed
             
-    def parse_schema_type_array(self, path="", schema_name="", schema_specs={}):
-        schema_name = schema_specs.get("items", "").get("$ref", schema_name)
-        if schema_name:         # Verify there is a ref
-            if schema_name not in self.schemas_dict:                          # Create new field object if not exists yet
-                self.schemas_dict[schema_name] = ApiSchema(schema_name)
-            self.schemas_dict[schema_name].add_path(path)                     # Associate path to the schema
+    def parse_schema_type_array(self, schema_name="", schema_specs={}):
+        fields_parsed=[]
+        ref=schema_specs.get("items", "").get("$ref","")
+        fields_parsed = self.schemas_dict.get(ref,ApiSchema(ref)).fields
+        # add fields of referenced schema to current one
+        if schema_name:
+            for field_ref in self.schemas_dict.get(ref,ApiSchema(ref)).fields:
+                self.schemas_dict[schema_name].add_field(field_ref)                    # Add field_name to the list of fields associated to this schema
+                self.request_fields_dict[field_ref].add_schema(schema_name)
 
-            #FIXME: Review as could be that fields are added afterwards (schema processed afterwards. Case of a schema refereing an other schema)
-            # if path:
-            #     for field in self.schemas_dict[schema_name].fields:               # Associate path to all fields of the schema
-            #         if field not in self.request_fields_dict:                     # Create new field object if not exists yet
-            #             self.request_fields_dict[field] = ApiSchema(field)
-            #     self.request_fields_dict[field].add_path(path)  
+        return fields_parsed
 
-    def associate_path_with_ref_fields(self):
-        pass
-    
     def to_json(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
         
@@ -349,7 +380,7 @@ if __name__ == "__main__":
     ###############################################
     print("-" * 25, "schemas_dict summary", "-" * 25)
     print (sorted(oss.schemas_dict))
-    print(f"{len(oss.schemas_dict)} parameters found.")
+    print(f"{len(oss.schemas_dict)} schemas found.")
     print("-" * 25, "schemas_dict details", "-" * 25)
     for schema_name, schema_object in sorted(oss.schemas_dict.items()):
         print(f"Schema '{schema_name}':")
@@ -358,18 +389,18 @@ if __name__ == "__main__":
 
     ### Print parameters in a structured way / tree
     ###############################################
-    print("-" * 25, "param_dict summary", "-" * 25)
-    print (sorted(oss.param_dict))
-    print(f"{len(oss.param_dict)} parameters found.")
-    print("-" * 25, "param_dict details", "-" * 25)
-    for field_name, field_object in sorted(oss.param_dict.items()):
-        print(f"Param field '{field_name}':")
-        print(f"   Paths: {field_object.paths}")
-        print(f"   Specifications:")
-        for specs in field_object.specs:
-            for k,v in specs.items():
-                print(f"      {k}:{v}")
-            print()
+    # print("-" * 25, "param_dict summary", "-" * 25)
+    # print (sorted(oss.param_dict))
+    # print(f"{len(oss.param_dict)} parameters found.")
+    # print("-" * 25, "param_dict details", "-" * 25)
+    # for field_name, field_object in sorted(oss.param_dict.items()):
+    #     print(f"Param field '{field_name}':")
+    #     print(f"   Paths: {field_object.paths}")
+    #     print(f"   Specifications:")
+    #     for specs in field_object.specs:
+    #         for k,v in specs.items():
+    #             print(f"      {k}:{v}")
+    #         print()
   
     ### Print request fields in a structured way / tree
     #####################################################
@@ -383,13 +414,6 @@ if __name__ == "__main__":
         print(f"   Schemas: {field_object.schemas}")
         print(f"   Paths: {field_object.paths}")
         print(f"   Properties: {field_object.properties}")
-
-    # print("-" * 25, "schemas_dict", "-" * 25)
-    # print (sorted(oss.schemas_dict))
-    # for schema_name, schema_object in sorted(oss.schemas_dict.items()):
-    #     print(f"{schema_name}")
-    #     print(f"   Fields: {schema_object.fields}")
-    #     print(f"   Path: {schema_object.paths}")
 
 
     """
