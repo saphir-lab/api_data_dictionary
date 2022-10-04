@@ -1,19 +1,25 @@
-#Standard Python Modules
+# Standard Python Modules
 import json
 import logging
 import re
 import sys
 from typing import Any
 
-#External Python Modules
-from pydantic import BaseModel, Json, ValidationError
+# External Python Modules
+from pydantic import Json
+
+# Personal Python Modules
+import utils
+
+#Logging module configuration
+logger = utils.ColorLogger(name=__name__)
 
 def method_name():
     return sys._getframe(  ).f_back.f_code.co_name
 
 class ApiObject():
     def __init__(self, api_content:Json[Any]):
-        logging.debug(f"ApiObject - Start initialization")
+        logger.debug(f"ApiObject - Start initialization")
         self.api_content:Json[Any] = api_content                    # Prerequisite - All other methosds will pick-up data from this field
         self.api_version:str = api_content.get("openapi",None)      #TODO: Validate it is open API and version 3.x.x
         self.api_info:str = self.get_api_info()
@@ -27,18 +33,18 @@ class ApiObject():
         self._get_api_request_fields()
 
     def _get_api_params(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         ### Prereq : self.param_ref_dict populated
         self._get_param_from_references()        # get all parameter name found in parameter reference
         self._get_param_from_path_name()         # get from url name & asssociate path
         self._get_param_from_path_cmd()          # get from path command (get, put, params), asssociate path &  characteristics
-        logging.info(f"{method_name()} - {len(self.param_dict)} parameters found in total.")
+        logger.info(f"{method_name()} - {len(self.param_dict)} parameters found in total.")
 
     def _get_api_request_fields(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         self._get_schemas_and_fields()      # get from component/schemas & get characteristics
         self._get_fields_from_path_cmd()     # get from path command (get, put, params) then asssociate path & characteristics
-        logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found in total.")
+        logger.info(f"{method_name()} - {len(self.request_fields_dict)} fields found in total.")
 
     def _get_fields_from_path_cmd(self):
         # goals : add path to 
@@ -52,9 +58,9 @@ class ApiObject():
         #     - "type": "array"
         #     - "$ref": "#/components/schemas/CreateUserInput"
         #     - "oneOf": [{"$ref": "#/components/schemas/UnregisterUserInputEx"}, {"$ref": "#/components/schemas/AdaptiveUnregisterUserInput"}],
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         for path in self.paths:
-            logging.debug(f"{method_name()} - Processing path '{path}'")
+            logger.debug(f"{method_name()} - Processing path '{path}'")
             for cmd, cmd_specs in self.api_content["paths"][path].items():
                 # cmd_specs can be an array in case body is using multiple templates
                 if type(cmd_specs) == dict:
@@ -62,17 +68,17 @@ class ApiObject():
                 elif type(cmd_specs) == list:
                     pass                    #keep as it is
                 else:
-                    logging.warning(f"{method_name()} - unknown format for path '{path}', command {cmd}, type:{type(cmd_specs)}")
-                    logging.debug(f"{method_name()} - {cmd} details:\n{cmd_specs}")
+                    logger.warning(f"{method_name()} - unknown format for path '{path}', command {cmd}, type:{type(cmd_specs)}")
+                    logger.debug(f"{method_name()} - {cmd} details:\n{cmd_specs}")
                 
                 for spec in cmd_specs:
                     self._parse_requestBody(path, cmd, spec)
                     self._parse_responses(path, cmd, spec)
 
-        logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found from now.")
+        logger.info(f"{method_name()} - {len(self.request_fields_dict)} fields found from now.")
 
     def _get_param_from_path_cmd(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         for path in self.paths:
             for cmd, cmd_specs in self.api_content["paths"][path].items():
                 if cmd =="parameters":      # case parameters are specified globally for the path, not per command
@@ -88,46 +94,46 @@ class ApiObject():
                         elif param_name:
                             param_specs = param
                         else:
-                            logging.warning(f"{method_name()} - Parameter element without $ref nor name.")
-                            logging.debug(f"{method_name()} - Parameter details:\n{param}")
+                            logger.warning(f"{method_name()} - Parameter element without $ref nor name.")
+                            logger.debug(f"{method_name()} - Parameter details:\n{param}")
                         if param_name and param_name not in self.param_dict:
                             self.param_dict[param_name]=ApiParameterField(param_name)
                         self.param_dict[param_name].add_spec(param_specs)
                         self.param_dict[param_name].add_path(path)
-        logging.info(f"{method_name()} - {len(self.param_dict)} parameters found from now.")
+        logger.info(f"{method_name()} - {len(self.param_dict)} parameters found from now.")
 
     def _get_param_from_path_name(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         for path in self.paths:
             if "{" in path:
-                logging.debug(f"{method_name()} - retrieving parameter(s) from path {path}")
+                logger.debug(f"{method_name()} - retrieving parameter(s) from path {path}")
                 current_params = re.findall(r"{(.*?)}", path)
                 for current_param in current_params:
                     if current_param not in self.param_dict:
                         self.param_dict[current_param]=ApiParameterField(current_param)
                     self.param_dict[current_param].add_path(path)
-        logging.info(f"{method_name()} - {len(self.param_dict)} parameters found from now.")
+        logger.info(f"{method_name()} - {len(self.param_dict)} parameters found from now.")
 
     def _get_param_from_references(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         for ref_name, ref_specs in self.param_ref_dict.items():
             param_specs = ref_specs.specs
             param_name = param_specs.get("name","")
             if not param_name:
-                logging.error(f"{method_name()} - parameter with no name: {param_specs}")
+                logger.error(f"{method_name()} - parameter with no name: {param_specs}")
             else:
                 # Create Param File Object if not exists then add specifications
                 if param_name not in self.param_dict:
                     self.param_dict[param_name]=ApiParameterField(param_name)
                 self.param_dict[param_name].add_spec(param_specs)
-        logging.info(f"{method_name()} - {len(self.param_dict)} parameters found from now.")
+        logger.info(f"{method_name()} - {len(self.param_dict)} parameters found from now.")
 
     def _get_schemas_and_fields(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         for schema_name_short, schema_specs in self.api_content.get("components",{}).get("schemas",{}).items():
             # Create Param File Object if not exists
             self._parse_one_schema(schema_name_short, schema_specs)
-        logging.info(f"{method_name()} - {len(self.request_fields_dict)} fields found from now.")
+        logger.info(f"{method_name()} - {len(self.request_fields_dict)} fields found from now.")
 
     def _parse_one_schema(self, schema_name_short, schema_specs):
             schema_name = "#/components/schemas/" + schema_name_short
@@ -152,7 +158,7 @@ class ApiObject():
             if ref:
                 # Get short name, retrieve specs, then process this schema if not yet done
                 ref_short= ref[ref.rfind('/')+1:]
-                logging.debug(f"Schema {schema_name} - Processing Schema reference {ref} --> {ref_short}")
+                logger.debug(f"Schema {schema_name} - Processing Schema reference {ref} --> {ref_short}")
                 schema_specs = self.api_content.get("components",{}).get("schemas",{}).get(ref_short,{})
                 if ref not in self.schemas_dict:
                     self._parse_one_schema(schema_name_short=ref_short, schema_specs=schema_specs)
@@ -180,14 +186,14 @@ class ApiObject():
                 elif body_schema_type == "array":
                     fields_to_add_path = self._parse_schema_type_array(schema_name="", schema_specs=body_schema)
                 else:
-                    logging.warning(f"{method_name()} - {full_path} - schema type '{body_schema_type}' doesn't not contains field name. Considered as a bad practive for body part")
-                    logging.debug(f"{method_name()} - Schema details: {body_schema}")
+                    logger.warning(f"{method_name()} - {full_path} - schema type '{body_schema_type}' doesn't not contains field name. Considered as a bad practive for body part")
+                    logger.debug(f"{method_name()} - Schema details: {body_schema}")
             else:
-                logging.warning(f"{method_name()} - {full_path} - schema without $ref or type.")
-                logging.debug(f"{method_name()} - Schema details\n{body_schema}")
+                logger.warning(f"{method_name()} - {full_path} - schema without $ref or type.")
+                logger.debug(f"{method_name()} - Schema details\n{body_schema}")
             
             # Associate path to all fields of the schema
-            logging.debug(f"{method_name()} - Add path {path} to fields {fields_to_add_path}")
+            logger.debug(f"{method_name()} - Add path {path} to fields {fields_to_add_path}")
             for field in fields_to_add_path:                     
                 self.request_fields_dict.get(field, ApiRequestField(field)).add_path(path)
 
@@ -203,18 +209,18 @@ class ApiObject():
                 self._parse_schema_type_object(schema_name, schema_specs)
             elif schema_type == "string":
                 # skip as this represents a format for fields but not a field itself.
-                logging.debug(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
+                logger.debug(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
             elif schema_type == "array":
                 self._parse_schema_type_array(schema_name, schema_specs)
             else:
-                logging.warning(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
+                logger.warning(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
         elif schema_lst:
             # TODO: allOf / oneOf
-            logging.debug(f"{method_name()} - Schema '{schema_name}' with allOf / oneOf")
+            logger.debug(f"{method_name()} - Schema '{schema_name}' with allOf / oneOf")
 
         else:
-            logging.warning(f"{method_name()} - Schema '{schema_name}' doesn't have 1 of the following properties ['type', 'oneOf', 'allOf'] -> type='object' format assumed.")
-            logging.debug(f"{method_name()} - Schema '{schema_name}' details:\n{schema_specs}")
+            logger.warning(f"{method_name()} - Schema '{schema_name}' doesn't have 1 of the following properties ['type', 'oneOf', 'allOf'] -> type='object' format assumed.")
+            logger.debug(f"{method_name()} - Schema '{schema_name}' details:\n{schema_specs}")
             self._parse_schema_type_object(schema_name, schema_specs)
      
     def _parse_schema_type_array(self, schema_name="", schema_specs={}):
@@ -243,12 +249,12 @@ class ApiObject():
         return fields_parsed
 
     def get_api_info(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         api_info_dic = self.api_content.get("info",{})
         return api_info_dic.get("title", "") + " v" + api_info_dic.get("version", "")
 
     def get_api_paths(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         api_obj = self.api_content.get("paths",{})
         obj_type = type(api_obj)
         if obj_type == dict:
@@ -258,27 +264,27 @@ class ApiObject():
         else:
             return_value = None
         if return_value:
-            logging.info(f"{method_name()} - {len(return_value)} paths found.")
+            logger.info(f"{method_name()} - {len(return_value)} paths found.")
         else:
-            logging.warning(f"{method_name()} - No paths found !!!") 
+            logger.warning(f"{method_name()} - No paths found !!!") 
         return return_value
   
     def get_api_schemas(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         api_schema_dic = self.api_content.get("components",{}).get("schemas",{})
         if api_schema_dic:
-            logging.info(f"{method_name()} - {len(api_schema_dic)} schemas found.")
+            logger.info(f"{method_name()} - {len(api_schema_dic)} schemas found.")
         else:
-            logging.warning(f"{method_name()} - No schemas found !!!")
+            logger.warning(f"{method_name()} - No schemas found !!!")
         return sorted(api_schema_dic.keys())
     
     def get_api_servers(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         api_servers_url_lst = [srv.get("url","") for srv in self.api_content.get("servers",[])]
         return sorted(api_servers_url_lst)    
   
     def get_param_references(self):
-        logging.debug(f"{method_name()} - Start")
+        logger.debug(f"{method_name()} - Start")
         param_ref_dict = {}
         for param_ref_name_short, param_specs in self.api_content.get("components",{}).get("parameters",{}).items():
             # Create Param File Object if not exists
@@ -351,8 +357,8 @@ class ApiRequestField():
         
 if __name__ == "__main__":
     import yaml
-    # logging.basicConfig(level=logging.DEBUG,format='%(asctime)s : %(levelname)s : %(message)s')
-    logging.basicConfig(level=logging.INFO,format='%(asctime)s : %(levelname)s : %(message)s')
+    # logger.basicConfig(level=logger.DEBUG,format='%(asctime)s : %(levelname)s : %(message)s')
+    # logger.basicConfig(level=logger.INFO,format='%(asctime)s : %(levelname)s : %(message)s')
 
     test_file = "api_doc/oss.yaml"
     # test_file = "api_doc/pet_store.yaml"
