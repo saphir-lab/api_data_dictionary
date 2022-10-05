@@ -32,18 +32,37 @@ class ApiObject():
         self._get_api_params()
         self._get_api_request_fields()
 
+    def _extract_info_from_field_properties(self):
+        logger.debug(f"{method_name()} - Start")
+        for field_name, field_object in sorted(self.request_fields_dict.items()):
+            for spec in field_object.properties:
+                self.request_fields_dict[field_name].add_description(spec.get("description",""))
+                self.request_fields_dict[field_name].add_type(spec.get("type",""))
+    
+    def _extract_info_from_param_specs(self):
+        logger.debug(f"{method_name()} - Start")
+        for field_name, field_object in sorted(self.param_dict.items()):
+            for spec in field_object.specs:
+                self.param_dict[field_name].add_description(spec.get("description",""))
+                self.param_dict[field_name].add_required(spec.get("required",False))
+                self.param_dict[field_name].add_location(spec.get("in",""))
+                self.param_dict[field_name].add_schema(spec.get("schema",{}))
+                self.param_dict[field_name].add_schema_type(spec.get("schema",{}).get("type",""))
+
     def _get_api_params(self):
         logger.debug(f"{method_name()} - Start")
         ### Prereq : self.param_ref_dict populated
         self._get_param_from_references()        # get all parameter name found in parameter reference
         self._get_param_from_path_name()         # get from url name & asssociate path
         self._get_param_from_path_cmd()          # get from path command (get, put, params), asssociate path &  characteristics
+        self._extract_info_from_param_specs()    # Parse the specs collected in order to extact additioal dedicated info like description, location, etc
         logger.info(f"{method_name()} - {len(self.param_dict)} parameters found in total.")
 
     def _get_api_request_fields(self):
         logger.debug(f"{method_name()} - Start")
-        self._get_schemas_and_fields()      # get from component/schemas & get characteristics
+        self._get_schemas_and_fields()       # get from component/schemas & get characteristics
         self._get_fields_from_path_cmd()     # get from path command (get, put, params) then asssociate path & characteristics
+        self._extract_info_from_field_properties()    # Parse the properties collected in order to extact additioal dedicated info like description, type, etc
         logger.info(f"{method_name()} - {len(self.request_fields_dict)} fields found in total.")
 
     def _get_fields_from_path_cmd(self):
@@ -298,7 +317,7 @@ class ApiObject():
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
         
 class ApiParameterRef():
-    def __init__(self, ref_name):
+    def __init__(self, ref_name:str):
         self.ref_name:str = ref_name
         self.specs:dict = {}
 
@@ -306,50 +325,91 @@ class ApiParameterRef():
         self.specs = spec
 
 class ApiParameterField():
-    def __init__(self, fieldname):
+    def __init__(self, fieldname:str):
         self.fieldname:str = fieldname
+        self.descriptions:set(str) = set()
+        # self.examples:list() = []         # TODO 'example' calue can be of different type (int, str, but also object). Skip forthe moment as don't know how it will behave
+        self.locations:set(str) = set()
         self.paths:set(str) = set()
+        self.required:bool = False
+        self.schemas:list(dict) = []
+        self.schema_types:set(str) = set()
         self.specs:list[dict] = []
 
-    def add_path(self, path:str):       
-        self.paths.add(path)
-        
+    def add_description(self, description:str):
+        if description:
+            self.descriptions.add(description)
+    
+    def add_location(self, location:str):
+        if location:
+            self.locations.add(location)
+
+    def add_path(self, path:str):
+        if path:
+            self.paths.add(path)
+    
+    def add_required(self, required:bool):
+        if bool:
+            self.required=required
+
+    def add_schema(self, schema:dict):
+        if schema and schema not in self.schemas:
+            self.schemas.append(schema)
+
+    def add_schema_type(self, schema_type:str):
+        if schema_type:
+            self.schema_types.add(schema_type)
+
     def add_spec(self, spec:dict):       
         if spec and spec not in self.specs:
             self.specs.append(spec)
 
 class ApiSchema():
-    def __init__(self, schemaname):
+    def __init__(self, schemaname:str):
         self.schemaname:str = schemaname
         self.fields:set(str) = set()
         self.paths:set(str) = set()
         # self.properties:list[dict] = []
         # self.samples:list[dict] = []
     
-    def add_path(self, path:str):       
-        self.paths.add(path)
+    def add_path(self, path:str):
+        if path:
+            self.paths.add(path)
 
-    def add_field(self, fieldname:str):       
-        self.fields.add(fieldname)
+    def add_field(self, fieldname:str):
+        if fieldname:
+            self.fields.add(fieldname)
 
 class ApiRequestField():
-    def __init__(self, fieldname):
+    def __init__(self, fieldname:str):
         self.fieldname:str = fieldname
         self.schemas:set(str) = set()
         self.paths:set(str) = set()
         self.properties:list[dict] = []
         self.required:bool = False
+        self.descriptions:set(str) = set()
+        self.types:set(str) = set()
     
-    def add_path(self, path:str):       
-        self.paths.add(path)
+    def add_description(self, description:str):
+        if description:
+            self.descriptions.add(description)
 
-    def add_schema(self, schema:str):
-        self.schemas.add(schema)
-    
+    def add_path(self, path:str):
+        if path:
+            self.paths.add(path)
+
     def add_properties(self, properties:dict):
         if properties and properties not in self.properties:
             self.properties.append(properties)
-        
+
+    def add_schema(self, schema:str):
+        if schema:
+            self.schemas.add(schema)
+    
+    def add_type(self, type:str):
+        if type:
+            self.types.add(type)
+   
 if __name__ == "__main__":
     import yaml
     # logger.basicConfig(level=logger.DEBUG,format='%(asctime)s : %(levelname)s : %(message)s')
@@ -404,6 +464,11 @@ if __name__ == "__main__":
     for field_name, field_object in sorted(oss.param_dict.items()):
         print(f"Param field '{field_name}':")
         print(f"   Paths: {field_object.paths}")
+        print(f"   Required: {field_object.required}")
+        print(f"   Descriptions: {field_object.descriptions}")
+        print(f"   Locations: {field_object.locations}")
+        print(f"   types: {field_object.schema_types}")
+        print(f"   schemas: {field_object.schemas}")
         print(f"   Specifications: {field_object.specs}")
         # for specs in field_object.specs:
         #     for k,v in specs.items():
@@ -422,6 +487,8 @@ if __name__ == "__main__":
         print(f"   Schemas: {field_object.schemas}")
         print(f"   Paths: {field_object.paths}")
         print(f"   Properties: {field_object.properties}")
+        print(f"   Types: {field_object.types}")
+        print(f"   Descriptions: {field_object.descriptions}")
 
 
     """
