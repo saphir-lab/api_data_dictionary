@@ -4,5 +4,6 @@ __pycache__/
 archive/
 env/
 log/
+out/
 test/
 test.*

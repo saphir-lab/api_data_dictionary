@@ -124,16 +124,23 @@ def get_df_params_summary(api_object:openapi_parsing.ApiObject):
     param_names = []
     param_nb_paths = []
     param_nb_specs = []
+    param_specs = []
     for field_name, field_object in sorted(api_object.param_dict.items()):
         param_names.append(field_name)
         param_nb_paths.append(len(field_object.paths))
         param_nb_specs.append(len(field_object.specs))
+        param_spec = ""
+        for spec in field_object.specs:
+            param_spec += str(spec) + "\n"
+        param_specs.append(param_spec)
+
     
     params = {
     "Name": param_names,
     "Param": True,
     "Nb Path (param)": param_nb_paths,
     "Nb Specs (param)": param_nb_specs,
+    "Specs (param)": param_specs
     }
     # df_params = pd.DataFrame(params, index=param_names)
     df_params = pd.DataFrame(params)
@@ -145,17 +152,23 @@ def get_df_fields_summary(api_object:openapi_parsing.ApiObject):
     field_required = []
     field_nb_paths = []
     field_nb_specs = []
+    field_specs = []
     for field_name, field_object in sorted(api_object.request_fields_dict.items()):
         field_names.append(field_name)
         field_required.append(field_object.required)
         field_nb_paths.append(len(field_object.paths))
         field_nb_specs.append(len(field_object.properties))
+        field_spec = ""
+        for spec in field_object.properties:
+            field_spec += str(spec) + "\n"
+        field_specs.append(field_spec)
     fields = {
     "Name": field_names,
     "Field": True,
     "Required": field_required,
     "Nb Path (field)": field_nb_paths,
-    "Nb Specs (field)": field_nb_specs
+    "Nb Specs (field)": field_nb_specs,
+    "Specs (field)": field_specs
     }
     df_fields = pd.DataFrame(fields)
     df_fields["Field"].astype(bool)
@@ -169,6 +182,7 @@ def report_table_summary(api_object:openapi_parsing.ApiObject):
     df_all = pd.merge(df_params, df_fields, how="outer", on="Name")
     df_all.fillna({"Param":False, "Field":False}, inplace=True)
     print(df_all)
+    df_all.to_excel("stat.xlsx")
     # print(df_all.describe(include = 'all'))
 
 
