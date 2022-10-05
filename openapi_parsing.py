@@ -302,56 +302,51 @@ class ApiParameterRef():
         self.ref_name:str = ref_name
         self.specs:dict = {}
 
-    def add_spec(self, spec={}):       
+    def add_spec(self, spec:dict):       
         self.specs = spec
 
 class ApiParameterField():
     def __init__(self, fieldname):
         self.fieldname:str = fieldname
-        self.paths:list[str] = []
+        self.paths:set(str) = set()
         self.specs:list[dict] = []
 
-    def add_path(self, path=""):       
-        if path and path not in self.paths:
-            self.paths.append(path)
+    def add_path(self, path:str):       
+        self.paths.add(path)
         
-    def add_spec(self, spec={}):       
+    def add_spec(self, spec:dict):       
         if spec and spec not in self.specs:
             self.specs.append(spec)
 
 class ApiSchema():
     def __init__(self, schemaname):
         self.schemaname:str = schemaname
-        self.fields:list[str] = []
-        self.paths:list[str] = []
+        self.fields:set(str) = set()
+        self.paths:set(str) = set()
         # self.properties:list[dict] = []
         # self.samples:list[dict] = []
     
-    def add_path(self, path=""):       
-        if path and path not in self.paths:
-            self.paths.append(path)
+    def add_path(self, path:str):       
+        self.paths.add(path)
 
-    def add_field(self, fieldname=""):       
-        if fieldname and fieldname not in self.fields:
-            self.fields.append(fieldname)
+    def add_field(self, fieldname:str):       
+        self.fields.add(fieldname)
 
 class ApiRequestField():
     def __init__(self, fieldname):
         self.fieldname:str = fieldname
-        self.schemas:list[str] = []
-        self.paths:list[str] = []
+        self.schemas:set(str) = set()
+        self.paths:set(str) = set()
         self.properties:list[dict] = []
         self.required:bool = False
     
-    def add_path(self, path=""):       
-        if path and path not in self.paths:
-            self.paths.append(path)
+    def add_path(self, path:str):       
+        self.paths.add(path)
 
-    def add_schema(self, schema=""):
-        if schema and schema not in self.schemas:
-            self.schemas.append(schema)
+    def add_schema(self, schema:str):
+        self.schemas.add(schema)
     
-    def add_properties(self, properties={}):       
+    def add_properties(self, properties:dict):
         if properties and properties not in self.properties:
             self.properties.append(properties)
         
