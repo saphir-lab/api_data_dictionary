@@ -104,21 +104,21 @@ class ApiObject():
                     specs_lst = cmd_specs
                 else:                       # case parameters are specified at the command level
                     specs_lst = cmd_specs.get("parameters",{})
-                    for param in specs_lst:
-                        param_name = param.get("name", "")
-                        param_ref_name = param.get("$ref", "")
-                        if param_ref_name:
-                            param_specs = self.param_ref_dict.get(param_ref_name, ApiParameterRef).specs
-                            param_name = param_specs.get("name","")          
-                        elif param_name:
-                            param_specs = param
-                        else:
-                            logger.warning(f"{method_name()} - Parameter element without $ref nor name.")
-                            logger.debug(f"{method_name()} - Parameter details:\n{param}")
-                        if param_name and param_name not in self.param_dict:
-                            self.param_dict[param_name]=ApiParameterField(param_name)
-                        self.param_dict[param_name].add_spec(param_specs)
-                        self.param_dict[param_name].add_path(path)
+                for param in specs_lst:
+                    param_name = param.get("name", "")
+                    param_ref_name = param.get("$ref", "")
+                    if param_ref_name:
+                        param_specs = self.param_ref_dict.get(param_ref_name, ApiParameterRef).specs
+                        param_name = param_specs.get("name","")          
+                    elif param_name:
+                        param_specs = param
+                    else:
+                        logger.warning(f"{method_name()} - Parameter element without $ref nor name.")
+                        logger.debug(f"{method_name()} - Parameter details:\n{param}")
+                    if param_name and param_name not in self.param_dict:
+                        self.param_dict[param_name]=ApiParameterField(param_name)
+                    self.param_dict[param_name].add_spec(param_specs)
+                    self.param_dict[param_name].add_path(path)
         logger.info(f"{method_name()} - {len(self.param_dict)} parameters found from now.")
 
     def _get_param_from_path_name(self):
@@ -131,6 +131,8 @@ class ApiObject():
                     if current_param not in self.param_dict:
                         self.param_dict[current_param]=ApiParameterField(current_param)
                     self.param_dict[current_param].add_path(path)
+                    self.param_dict[current_param].add_location("path")
+
         logger.info(f"{method_name()} - {len(self.param_dict)} parameters found from now.")
 
     def _get_param_from_references(self):
