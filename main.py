@@ -174,6 +174,9 @@ def report_table_summary(api_object:openapi_parsing.ApiObject):
     df_fields = get_df_fields(api_object)
     df_fields.to_excel("out/stat_fields.xlsx", index=False)
     
+    df_common = pd.merge(df_params, df_fields, how="inner", on="Name", suffixes=(' (param)', ' (field)'))
+    df_common.to_excel("out/common_fields.xlsx", index=False)
+
     # df_all = pd.merge(df_params, df_fields, how="outer", on="Name")
     # df_all.fillna({"Param":False, "Field":False}, inplace=True)
 
