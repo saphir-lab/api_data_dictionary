@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import Dict
 
 # External Python Modules
 import pandas as pd
@@ -170,13 +171,41 @@ def get_df_fields(api_object:openapi_parsing.ApiObject):
 def report_table_summary(api_object:openapi_parsing.ApiObject):
     df_params = get_df_params(api_object)  
     df_fields = get_df_fields(api_object)
-    df_common = pd.merge(df_params, df_fields, how="inner", on="Name", suffixes=(' (param)', ' (field)'))
+    df_common = pd.merge(df_params, df_fields, how="inner", on="Name", suffixes=('\n(param)', '\n(field)'))
 
-    with pd.ExcelWriter("out/outcome.xlsx") as writer:
-        df_params.to_excel(writer, index=False, sheet_name='Params', freeze_panes=(1,1))
-        df_fields.to_excel(writer, index=False, sheet_name='Fields', freeze_panes=(1,1))
-        df_common.to_excel(writer, index=False, sheet_name='Common', freeze_panes=(1,1))
+    writer = pd.ExcelWriter("out/outcome.xlsx", engine= "xlsxwriter")
+    df_params.to_excel(writer, index=False, sheet_name='Params', freeze_panes=(1,1))
+    df_fields.to_excel(writer, index=False, sheet_name='Fields', freeze_panes=(1,1))
+    df_common.to_excel(writer, index=False, sheet_name='Common', freeze_panes=(1,1))
+   
+    # TODO: pass do_formatting as parameter
+    do_formatting=True
+    if do_formatting:
+        xls_formatting(writer=writer, sheet_name="Params", column_names=df_params.columns.values, settings={"A:A":30, "B:E":10, "F:H":100})
+        xls_formatting(writer=writer, sheet_name="Fields", column_names=df_fields.columns.values, settings={"A:A":30, "B:D":10, "E:G":100})
+        xls_formatting(writer=writer, sheet_name="Common", column_names=df_common.columns.values, settings={"A:A":30, "B:E":10, "F:H":100,"I:K":10, "L:N":100})
 
+    writer.close()
+
+def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list, settings:dict):
+    wb = writer.book
+    ws = writer.sheets[sheet_name]
+
+    fmt_cells = wb.add_format({"text_wrap": True, "valign": "top"})
+    for k, v in settings.items():
+        ws.set_column(k,v,fmt_cells)
+    # ws.autofilter('A1:H1')
+    ws.autofilter(0,0,0,len(column_names)-1)
+
+    fmt_header = wb.add_format({
+    "bold": True,
+    "text_wrap": True,
+    "valign": "top",
+    "fg_color": "#4F81BD",
+    "font_color": "#FFFFFF",
+    "border": 1})
+    for col , value in enumerate(column_names):
+        ws.write(0, col, value, fmt_header)
 
 def main(open_api_file: Path = typer.Argument(..., 
                                             exists=True,

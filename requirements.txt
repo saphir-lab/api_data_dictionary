@@ -1,5 +1,5 @@
-openpyxl
 typer[all]
 pandas
 pydantic
 pyyaml
+xlsxwriter
