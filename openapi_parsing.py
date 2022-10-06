@@ -383,11 +383,11 @@ class ApiSchema():
 class ApiRequestField():
     def __init__(self, fieldname:str):
         self.fieldname:str = fieldname
-        self.schemas:set(str) = set()
+        self.descriptions:set(str) = set()
         self.paths:set(str) = set()
         self.properties:list[dict] = []
         self.required:bool = False
-        self.descriptions:set(str) = set()
+        self.schemas:set(str) = set()
         self.types:set(str) = set()
     
     def add_description(self, description:str):
@@ -477,18 +477,18 @@ if __name__ == "__main__":
   
     ### Print request fields in a structured way / tree
     #####################################################
-    print("-" * 25, "request_fields_dict summary", "-" * 25)
-    print(sorted(oss.request_fields_dict))
-    print(f"{len(oss.request_fields_dict)} request fields found.")
-    print("-" * 25, "request_fields_dict details", "-" * 25)
-    for field_name, field_object in sorted(oss.request_fields_dict.items()):
-        print(f"Request field '{field_name}':")
-        print(f"   Required: {field_object.required}")
-        print(f"   Schemas: {field_object.schemas}")
-        print(f"   Paths: {field_object.paths}")
-        print(f"   Properties: {field_object.properties}")
-        print(f"   Types: {field_object.types}")
-        print(f"   Descriptions: {field_object.descriptions}")
+    # print("-" * 25, "request_fields_dict summary", "-" * 25)
+    # print(sorted(oss.request_fields_dict))
+    # print(f"{len(oss.request_fields_dict)} request fields found.")
+    # print("-" * 25, "request_fields_dict details", "-" * 25)
+    # for field_name, field_object in sorted(oss.request_fields_dict.items()):
+    #     print(f"Request field '{field_name}':")
+    #     print(f"   Required: {field_object.required}")
+    #     print(f"   Schemas: {field_object.schemas}")
+    #     print(f"   Paths: {field_object.paths}")
+    #     print(f"   Properties: {field_object.properties}")
+    #     print(f"   Types: {field_object.types}")
+    #     print(f"   Descriptions: {field_object.descriptions}")
 
 
     """

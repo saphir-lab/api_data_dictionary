@@ -92,97 +92,93 @@ def report_overview(api_object:openapi_parsing.ApiObject):
     print(f"- Number of Parameters with same name as a field: {len(same_field_name)}")
     print(f"{same_field_name}")
 
-
-def report_params_overview(api_object:openapi_parsing.ApiObject):
+def get_df_params(api_object:openapi_parsing.ApiObject):
+    columns = [
+    "Name",
+    "Required",
+    "Locations",
+    "Types",
+    "Nb Path",
+    "Paths",
+    "Descriptions",
+    "Schemas",
+    # "Specs"
+    ]
+    rows = []
     for field_name, field_object in sorted(api_object.param_dict.items()):
-        print(f"- {field_name}: {field_object.paths}")
-
-def report_params_summary(api_object:openapi_parsing.ApiObject):
-    for field_name, field_object in sorted(api_object.param_dict.items()):
-        print(f"Param field '{field_name}':")
-        print(f"   - Paths: {field_object.paths}")
-        print(f"   - Specifications: {field_object.specs}")
-        print()
-
-def report_params_details(api_object:openapi_parsing.ApiObject):
-    for field_name, field_object in sorted(api_object.param_dict.items()):
-        print(f"Param field '{field_name}':")
-        print(f"   - Paths:")
-        for path in field_object.paths:
-            print (f"      - {path}")
-        print(f"   - Specifications:")
-        for specs in field_object.specs:
-            print (f"      - {specs}")
-
-        print()
-        # for specs in field_object.specs:
-        #     for k,v in specs.items():
-        #         print(f"      {k}:{v}")
-        #     print()
-
-def get_df_params_summary(api_object:openapi_parsing.ApiObject):
-    param_names = []
-    param_nb_paths = []
-    param_nb_specs = []
-    param_specs = []
-    for field_name, field_object in sorted(api_object.param_dict.items()):
-        param_names.append(field_name)
-        param_nb_paths.append(len(field_object.paths))
-        param_nb_specs.append(len(field_object.specs))
-        param_spec = ""
+        schemas_str = ""
+        for schema in field_object.schemas:
+            schemas_str += "- " + str(schema) + "\n"
+        spec_str = ""
         for spec in field_object.specs:
-            param_spec += str(spec) + "\n"
-        param_specs.append(param_spec)
+            spec_str += "- " + str(spec) + "\n"
+        
+        row = [
+            field_name,
+            field_object.required,
+            "\n".join(sorted(field_object.locations)),
+            "\n".join(sorted(field_object.schema_types)),
+            len(field_object.paths),
+            "\n- ".join(sorted(field_object.paths)),
+            "\n- ".join(field_object.descriptions),
+            schemas_str,
+            # spec_str
+            ]
+        for i in (5,6):
+            if row[i]:
+                row[i] = "- " + row[i]
 
+        rows.append(row)
     
-    params = {
-    "Name": param_names,
-    "Param": True,
-    "Nb Path (param)": param_nb_paths,
-    "Nb Specs (param)": param_nb_specs,
-    "Specs (param)": param_specs
-    }
-    # df_params = pd.DataFrame(params, index=param_names)
-    df_params = pd.DataFrame(params)
-    df_params["Param"].astype(bool)
+    df_params = pd.DataFrame(rows, columns=columns)
     return df_params
 
-def get_df_fields_summary(api_object:openapi_parsing.ApiObject):
-    field_names = []
-    field_required = []
-    field_nb_paths = []
-    field_nb_specs = []
-    field_specs = []
+def get_df_fields(api_object:openapi_parsing.ApiObject):
+    columns = [
+    "Name",
+    "Required",
+    "Types",
+    "Nb Path",
+    "Paths",
+    "Descriptions",
+    "Schemas"
+    ]
+    rows = []
+
     for field_name, field_object in sorted(api_object.request_fields_dict.items()):
-        field_names.append(field_name)
-        field_required.append(field_object.required)
-        field_nb_paths.append(len(field_object.paths))
-        field_nb_specs.append(len(field_object.properties))
-        field_spec = ""
-        for spec in field_object.properties:
-            field_spec += str(spec) + "\n"
-        field_specs.append(field_spec)
-    fields = {
-    "Name": field_names,
-    "Field": True,
-    "Required": field_required,
-    "Nb Path (field)": field_nb_paths,
-    "Nb Specs (field)": field_nb_specs,
-    "Specs (field)": field_specs
-    }
-    df_fields = pd.DataFrame(fields)
-    df_fields["Field"].astype(bool)
+        schemas_str = ""
+        for schema in field_object.properties:
+            schemas_str += "- " + str(schema) + "\n"
+       
+        row = [
+            field_name,
+            field_object.required,
+            "\n".join(sorted(field_object.types)),
+            len(field_object.paths),
+            "\n- ".join(sorted(field_object.paths)),
+            "\n- ".join(field_object.descriptions),
+            schemas_str,
+            # spec_str
+            ]
+        for i in (4,5):
+            if row[i]:
+                row[i] = "- " + row[i]
+        rows.append(row)
+    df_fields = pd.DataFrame(rows, columns=columns)
     return df_fields
 
 def report_table_summary(api_object:openapi_parsing.ApiObject):
-    df_params = get_df_params_summary(api_object)
-    # print(df_params)
-    df_fields = get_df_fields_summary(api_object)
-    # print(df_fields)
-    df_all = pd.merge(df_params, df_fields, how="outer", on="Name")
-    df_all.fillna({"Param":False, "Field":False}, inplace=True)
-    print(df_all)
-    df_all.to_excel("stat.xlsx")
+    df_params = get_df_params(api_object)
+    df_params.to_excel("out/stat_params.xlsx", index=False)
+    
+    df_fields = get_df_fields(api_object)
+    df_fields.to_excel("out/stat_fields.xlsx", index=False)
+    
+    # df_all = pd.merge(df_params, df_fields, how="outer", on="Name")
+    # df_all.fillna({"Param":False, "Field":False}, inplace=True)
+
+    # print(df_all[["Name", "Locations"]])
+    # df_all.to_excel("out/stat.xlsx")
     # print(df_all.describe(include = 'all'))
 
 
@@ -200,9 +196,6 @@ def main(open_api_file: Path = typer.Argument(...,
     api_content = load_openapi_file(open_api_file)
     api_object = openapi_parsing.ApiObject(api_content)
     report_overview(api_object)   
-    # report_params_overview(api_object)   
-    # report_params_summary(api_object)   
-    # report_params_details(api_object)
     report_table_summary(api_object)
     
 if __name__ == "__main__":
