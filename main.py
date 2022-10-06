@@ -168,16 +168,14 @@ def get_df_fields(api_object:openapi_parsing.ApiObject):
     return df_fields
 
 def report_table_summary(api_object:openapi_parsing.ApiObject):
-    df_params = get_df_params(api_object)
-    df_params.to_excel("out/stat_params.xlsx", index=False)
-    
+    df_params = get_df_params(api_object)  
     df_fields = get_df_fields(api_object)
-    df_fields.to_excel("out/stat_fields.xlsx", index=False)
-    
     df_common = pd.merge(df_params, df_fields, how="inner", on="Name", suffixes=(' (param)', ' (field)'))
-    df_common.to_excel("out/common_fields.xlsx", index=False)
 
-    # print(df_all.describe(include = 'all'))
+    with pd.ExcelWriter("out/outcome.xlsx") as writer:
+        df_params.to_excel(writer, index=False, sheet_name='Params', freeze_panes=(1,1))
+        df_fields.to_excel(writer, index=False, sheet_name='Fields', freeze_panes=(1,1))
+        df_common.to_excel(writer, index=False, sheet_name='Common', freeze_panes=(1,1))
 
 
 def main(open_api_file: Path = typer.Argument(..., 
