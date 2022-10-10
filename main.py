@@ -134,6 +134,29 @@ def get_df_params(api_object:openapi_parsing.ApiObject):
     df_params = pd.DataFrame(rows, columns=columns)
     return df_params
 
+def get_df_schemas(api_object:openapi_parsing.ApiObject):
+    columns = [
+    "Name",
+    "Type",
+    "Fields",
+    "Paths"
+    ]
+    rows = []
+    for schema_name, schema_object in sorted(api_object.schemas_dict.items()):      
+        row = [
+            schema_name,
+            schema_object.type,
+            "\n- ".join(sorted(schema_object.fields)),
+            "\n- ".join(sorted(schema_object.paths)),
+            ]
+        for i in (2,3):
+            if row[i]:
+                row[i] = "- " + row[i]
+        rows.append(row)
+    
+    df_schemas = pd.DataFrame(rows, columns=columns)
+    return df_schemas
+
 def get_df_fields(api_object:openapi_parsing.ApiObject):
     columns = [
     "Name",
@@ -169,18 +192,21 @@ def get_df_fields(api_object:openapi_parsing.ApiObject):
     return df_fields
 
 def report_table_summary(api_object:openapi_parsing.ApiObject):
+    df_schemas = get_df_schemas(api_object)  
     df_params = get_df_params(api_object)  
     df_fields = get_df_fields(api_object)
     df_common = pd.merge(df_params, df_fields, how="inner", on="Name", suffixes=('\n(param)', '\n(field)'))
 
-    save_to_xlsx(df_params, df_fields, df_common, "out/outcome.xlsx")
+    save_to_xlsx(df_schemas, df_params, df_fields, df_common, "out/outcome.xlsx")
+    save_to_html(df_schemas, "Schemas", "out/schemas.html")
     save_to_html(df_params, "Params", "out/params.html")
     save_to_html(df_fields, "Fields", "out/fields.html")
     save_to_html(df_common, "Common Fields", "out/common.html")
     save_to_json(api_object.param_dict, "out/params.json")
 
-def save_to_xlsx(df_params, df_fields, df_common, outfile):
+def save_to_xlsx(df_schemas, df_params, df_fields, df_common, outfile):
     writer = pd.ExcelWriter(outfile, engine= "xlsxwriter")
+    df_schemas.to_excel(writer, index=False, sheet_name='Schemas', freeze_panes=(1,1))
     df_params.to_excel(writer, index=False, sheet_name='Params', freeze_panes=(1,1))
     df_fields.to_excel(writer, index=False, sheet_name='Fields', freeze_panes=(1,1))
     df_common.to_excel(writer, index=False, sheet_name='Common', freeze_panes=(1,1))
@@ -188,6 +214,7 @@ def save_to_xlsx(df_params, df_fields, df_common, outfile):
     # TODO: pass do_formatting as parameter
     do_formatting=True
     if do_formatting:
+        xls_formatting(writer=writer, sheet_name="Schemas", column_names=df_schemas.columns.values, settings={"A:A":50, "B:B":10, "C:C":35, "D:D":100})
         xls_formatting(writer=writer, sheet_name="Params", column_names=df_params.columns.values, settings={"A:A":30, "B:E":10, "F:H":100})
         xls_formatting(writer=writer, sheet_name="Fields", column_names=df_fields.columns.values, settings={"A:A":30, "B:D":10, "E:G":100})
         xls_formatting(writer=writer, sheet_name="Common", column_names=df_common.columns.values, settings={"A:A":30, "B:E":10, "F:H":100,"I:K":10, "L:N":100})
