@@ -1,6 +1,5 @@
 # Standard Python Modules
 import json
-import logging
 import re
 import sys
 from typing import Any
@@ -14,6 +13,11 @@ import utils
 #Logging module configuration
 logger = utils.ColorLogger(name=__name__)
 
+def default(obj):
+    if hasattr(obj, 'to_json'):
+        return obj.to_json()
+    raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
+
 def method_name():
     return sys._getframe(  ).f_back.f_code.co_name
 
@@ -21,7 +25,7 @@ class ApiObject():
     def __init__(self, api_content:Json[Any]):
         logger.debug(f"ApiObject - Start initialization")
         self.api_content:Json[Any] = api_content                    # Prerequisite - All other methosds will pick-up data from this field
-        self.api_version:str = api_content.get("openapi",None)      #TODO: Validate it is open API and version 3.x.x
+        self.api_version:str = api_content.get("openapi",None)      # TODO: Validate it is open API and version 3.x.x
         self.api_info:str = self.get_api_info()
         self.servers:list[str] = self.get_api_servers()
         self.paths:list[str] = self.get_api_paths()
@@ -323,8 +327,17 @@ class ApiParameterRef():
         self.ref_name:str = ref_name
         self.specs:dict = {}
 
+    def __str__(self):
+        return self.ref_name
+
+    def __repr__(self):
+        return self.__str__()
+
     def add_spec(self, spec:dict):       
         self.specs = spec
+ 
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
 class ApiParameterField():
     def __init__(self, fieldname:str):
@@ -337,6 +350,24 @@ class ApiParameterField():
         self.schemas:list(dict) = []
         self.schema_types:set(str) = set()
         self.specs:list[dict] = []
+
+    def __iter__(self):
+        yield from {
+            "fieldname": self.fieldname,
+            "descriptions": self.descriptions,
+            "locations": self.locations,
+            "paths": self.paths,
+            "required": self.required,
+            "schemas": self.schemas,
+            "schema_types": self.schema_types,
+            "spec": self.specs
+        }.items()
+
+    def __str__(self):
+        return self.fieldname
+
+    def __repr__(self):
+        return self.__str__()
 
     def add_description(self, description:str):
         if description:
@@ -366,6 +397,12 @@ class ApiParameterField():
         if spec and spec not in self.specs:
             self.specs.append(spec)
 
+    def to_json(self, indent=None):
+        to_return = {"fieldname": self.fieldname, "descriptions": list(self.descriptions), "locations":list(self.locations), "paths": list(self.paths), "required":self.required,
+                     "schemas": list(self.schemas), "schema_types": list(self.schema_types), "specs": list(self.specs)
+                     }
+        return json.dumps(to_return, indent=indent)
+
 class ApiSchema():
     def __init__(self, schemaname:str):
         self.schemaname:str = schemaname
@@ -373,6 +410,12 @@ class ApiSchema():
         self.paths:set(str) = set()
         # self.properties:list[dict] = []
         # self.samples:list[dict] = []
+
+    def __str__(self):
+        return self.schemaname
+
+    def __repr__(self):
+        return self.__str__()
     
     def add_path(self, path:str):
         if path:
@@ -381,6 +424,9 @@ class ApiSchema():
     def add_field(self, fieldname:str):
         if fieldname:
             self.fields.add(fieldname)
+    
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
 class ApiRequestField():
     def __init__(self, fieldname:str):
@@ -392,6 +438,12 @@ class ApiRequestField():
         self.schemas:set(str) = set()
         self.types:set(str) = set()
     
+    def __str__(self):
+        return self.fieldname
+
+    def __repr__(self):
+        return self.__str__()
+
     def add_description(self, description:str):
         if description:
             self.descriptions.add(description)
@@ -411,6 +463,9 @@ class ApiRequestField():
     def add_type(self, type:str):
         if type:
             self.types.add(type)
+
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
    
 if __name__ == "__main__":
     import yaml
@@ -427,7 +482,16 @@ if __name__ == "__main__":
     with open(test_file, encoding="UTF-8", errors="ignore") as config_file:
         f = yaml.safe_load(config_file)
 
+    # TODO 1 : Check if when returning __str__ as fieldname for each classes if I cannot change dictionnary of objects as a set of objects instead in ApiObject
+    # TODO 2 : serialize different element to json. see endpage of https://changsin.medium.com/how-to-serialize-a-class-object-to-json-in-python-849697a0cd3
     oss = ApiObject(f)
+    for k, v in oss.param_dict.items():
+        print (f"- {k}: {v.to_json()}\n")
+    exit()
+   
+   
+   
+   
     # print (oss.api_info)
     # print (oss.api_version)
     # print("-" * 25, "servers", "-" * 25)
@@ -476,7 +540,8 @@ if __name__ == "__main__":
         #     for k,v in specs.items():
         #         print(f"      {k}:{v}")
         #     print()
-  
+    
+   
     ### Print request fields in a structured way / tree
     #####################################################
     # print("-" * 25, "request_fields_dict summary", "-" * 25)

@@ -173,7 +173,14 @@ def report_table_summary(api_object:openapi_parsing.ApiObject):
     df_fields = get_df_fields(api_object)
     df_common = pd.merge(df_params, df_fields, how="inner", on="Name", suffixes=('\n(param)', '\n(field)'))
 
-    writer = pd.ExcelWriter("out/outcome.xlsx", engine= "xlsxwriter")
+    save_to_xlsx(df_params, df_fields, df_common, "out/outcome.xlsx")
+    save_to_html(df_params, "Params", "out/params.html")
+    save_to_html(df_fields, "Fields", "out/fields.html")
+    save_to_html(df_common, "Common Fields", "out/common.html")
+    save_to_json(api_object.param_dict, "out/params.json")
+
+def save_to_xlsx(df_params, df_fields, df_common, outfile):
+    writer = pd.ExcelWriter(outfile, engine= "xlsxwriter")
     df_params.to_excel(writer, index=False, sheet_name='Params', freeze_panes=(1,1))
     df_fields.to_excel(writer, index=False, sheet_name='Fields', freeze_panes=(1,1))
     df_common.to_excel(writer, index=False, sheet_name='Common', freeze_panes=(1,1))
@@ -186,6 +193,45 @@ def report_table_summary(api_object:openapi_parsing.ApiObject):
         xls_formatting(writer=writer, sheet_name="Common", column_names=df_common.columns.values, settings={"A:A":30, "B:E":10, "F:H":100,"I:K":10, "L:N":100})
 
     writer.close()
+
+def save_to_html(df:pd.DataFrame, title:str, outfile:str):
+    html_top = f"""
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+
+    <title>Data Dictionary - {title}</title>
+</head>
+<body>
+    <h1>Data Dictionary - {title}</h1>
+    <div style="margin: 2rem;">
+    """
+    html_end = f"""
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.min.js" integrity="sha384-IDwe1+LCz02ROU9k972gdyvl+AESN10+x7tBKgc9I5HFtuNz0wWnPclzo6p9vxnk" crossorigin="anonymous"></script>
+</body>
+</html>
+    """
+    html_tbl = df.to_html(index=False, classes='table table-striped table-sm table-hover text-left', justify="left")
+    html_tbl = html_tbl.replace("\\n","<br>")
+    html_tbl = html_tbl.replace('<thead>', '<thead class="table-primary", style="vertical-align: middle">')
+    html_tbl = html_tbl.replace('<tbody>', '<tbody class="table-group-divider">')
+
+    with open(outfile, "w") as f:
+        f.write(html_top)
+        f.write(html_tbl)    
+        f.write(html_end)
+        
+def save_to_json(dict:dict, outfile):   
+    # with open(outfile, "w") as f:
+    #     json.dump(dict, f)
+    pass
 
 def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list, settings:dict):
     wb = writer.book
