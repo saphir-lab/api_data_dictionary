@@ -211,10 +211,12 @@ class ApiObject():
         schema_type = schema_specs.get("type",None)
         schema_lst = schema_specs.get("allOf",None) or schema_specs.get("oneOf",None)
         if schema_type:
+            self.schemas_dict.get(schema_name, ApiSchema(None)).type = schema_type
             if schema_type == "object":
                 self._parse_schema_type_object(schema_name, schema_specs)
             elif schema_type == "string":
                 # skip as this represents a format for fields but not a field itself.
+                # self.request_fields_dict[field_name].add_properties(schema_specs)
                 logger.debug(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
             elif schema_type == "array":
                 self._parse_schema_type_array(schema_name, schema_specs)
@@ -222,9 +224,11 @@ class ApiObject():
                 logger.warning(f"{method_name()} - Schema '{schema_name}' of type '{schema_type}' not supported/parsed")
         elif schema_lst:
             # TODO: allOf / oneOf
-            logger.debug(f"{method_name()} - Schema '{schema_name}' with allOf / oneOf")
+            self.schemas_dict.get(schema_name, ApiSchema(None)).type = "allOf / oneOf"
+            logger.warning(f"{method_name()} - Schema '{schema_name}' with allOf / oneOf --> not processed for now")
 
         else:
+            self.schemas_dict.get(schema_name, ApiSchema(None)).type = "None"
             logger.warning(f"{method_name()} - Schema '{schema_name}' doesn't have 1 of the following properties ['type', 'oneOf', 'allOf'] -> type='object' format assumed.")
             logger.debug(f"{method_name()} - Schema '{schema_name}' details:\n{schema_specs}")
             self._parse_schema_type_object(schema_name, schema_specs)
@@ -392,6 +396,7 @@ class ApiParameterField():
 class ApiSchema():
     def __init__(self, schemaname:str):
         self.schemaname:str = schemaname
+        self.type:str = ""
         self.fields:set(str) = set()
         self.paths:set(str) = set()
         # self.properties:list[dict] = []
