@@ -304,8 +304,8 @@ class ApiObject():
             param_ref_dict[param_ref_name].add_spec(param_specs)
         return param_ref_dict
 
-    def to_json(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+    def to_json(self, indent=None):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=indent)
         
 class ApiParameterRef():
     def __init__(self, ref_name:str):
@@ -321,8 +321,8 @@ class ApiParameterRef():
     def add_spec(self, spec:dict):       
         self.specs = spec
  
-    def to_json(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+    def to_json(self, indent=None):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=indent)
 
 class ApiParameterField():
     def __init__(self, fieldname:str):
@@ -416,8 +416,8 @@ class ApiSchema():
         if fieldname:
             self.fields.add(fieldname)
     
-    def to_json(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+    def to_json(self, indent=None):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=indent)
 
 class ApiRequestField():
     def __init__(self, fieldname:str):
@@ -457,9 +457,11 @@ class ApiRequestField():
         if type:
             self.types.add(type)
 
-    def to_json(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
-   
+    def to_json(self, indent=None):
+        to_return = {"fieldname": self.fieldname, "descriptions": list(self.descriptions), "paths": list(self.paths), 
+                     "properties": list(self.properties), "required":self.required, "schemas": list(self.schemas), "types": list(self.types)
+                     }
+        return json.dumps(to_return, indent=indent)   
 if __name__ == "__main__":
     import yaml
     # logger.basicConfig(level=logger.DEBUG,format='%(asctime)s : %(levelname)s : %(message)s')

@@ -202,7 +202,7 @@ def report_table_summary(api_object:openapi_parsing.ApiObject):
     save_to_html(df_params, "Params", "out/params.html")
     save_to_html(df_fields, "Fields", "out/fields.html")
     save_to_html(df_common, "Common Fields", "out/common.html")
-    save_to_json(api_object.param_dict, "out/params.json")
+    save_to_json(api_object, "out/outcome.json")
 
 def save_to_xlsx(df_schemas, df_params, df_fields, df_common, outfile):
     writer = pd.ExcelWriter(outfile, engine= "xlsxwriter")
@@ -255,10 +255,20 @@ def save_to_html(df:pd.DataFrame, title:str, outfile:str):
         f.write(html_tbl)    
         f.write(html_end)
         
-def save_to_json(dict:dict, outfile):   
-    # with open(outfile, "w") as f:
-    #     json.dump(dict, f)
-    pass
+def save_to_json(api_object:openapi_parsing.ApiObject, outfile):   
+    to_return={}
+    params_lst=[]
+    for k,v in sorted(api_object.param_dict.items()):
+        params_lst.append(v.to_json())
+    to_return["Parameters"]=params_lst
+
+    fields_lst=[]
+    for k,v in sorted(api_object.request_fields_dict.items()):
+        fields_lst.append(v.to_json())
+    to_return["Fields"]=fields_lst
+
+    with open(outfile, "w") as f:
+        json.dump(to_return, f, indent=4)
 
 def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list, settings:dict):
     wb = writer.book
