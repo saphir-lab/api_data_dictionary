@@ -56,12 +56,19 @@ class ColorLogger(logging.getLoggerClass()):
         if options.logfile_name:
             path = os.path.dirname(os.path.abspath(options.logfile_name))
             if path and not os.path.exists(path):
-                os.makedirs(path)                   #create logging directory if not exists
-
-            fh = logging.FileHandler(options.logfile_name, encoding='utf-8')
-            fh.setLevel(options.logfile_logging_level)
-            fh.setFormatter(options.logfile_formatter)
-            self.addHandler(fh)
+                try:
+                    os.makedirs(path)                   #create logging directory if not exists
+                except Exception as e:
+                    print(f"Unable to create log directory '{path}'")
+                    print(f"Reason: {str(e)}")
+                    print(f"Logging to file is disabled")
+                else:
+                    print(f"Logging directory created '{path}'")
+            if os.path.exists(path): 
+                fh = logging.FileHandler(options.logfile_name, encoding='utf-8')
+                fh.setLevel(options.logfile_logging_level)
+                fh.setFormatter(options.logfile_formatter)
+                self.addHandler(fh)
 
         # Put the console handler as last otherwise message is modified with color and appear as well in the file
         if options.console:

@@ -13,6 +13,7 @@ SETTING_FILE = os.path.join(CUR_DIR,"settings.yaml")
 VALID_JSON_EXTENSIONS =  [".json"]
 VALID_YAML_EXTENSIONS =  [".yaml", ".yml"]
 VALID_OPENAPI_EXTENSIONS =  VALID_JSON_EXTENSIONS + VALID_YAML_EXTENSIONS
+VALID_OUTPUT_FORMAT = ["cli", "json", "html", "xlsx"]
 INVALID_SEPARATOR = ['<', '>', ':', '"', '/', '\\\\', '|', '?','*']
 API_OBJECTS = ["openapi", "info","servers", "paths", "components", "security", "tags", "externalDocs"]
 

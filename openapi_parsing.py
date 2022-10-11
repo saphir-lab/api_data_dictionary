@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+__author__ = 'P. Saint-Amand'
+__version__ = '1.0.0'
+
 # Standard Python Modules
 import json
 import re
