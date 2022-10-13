@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 __author__ = 'P. Saint-Amand'
-__version__ = 'V 0.3.0'
+__version__ = 'V 0.4.0'
 
 # Standard Python Modules
+from cgitb import html
+import datetime
 import json
 import logging
-from operator import contains
 import os
 from pathlib import Path
 
@@ -22,6 +23,23 @@ import openapi_parsing
 ### Variables
 console=utils.Console(colored=True)
 all_args={}
+
+def build_html_table(title:str, df:pd.DataFrame):
+    div_header =  f"""<div class="accordion-item">
+        <h2 class="accordion-header" id="{title}">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{title}" aria-expanded="false" aria-controls="collapse{title}">
+            {title}
+          </button>
+        </h2>
+        <div id="collapse{title}" class="accordion-collapse collapse" aria-labelledby="{title}" data-bs-parent="#accordion_openapi">
+          <div class="accordion-body">
+    """
+    html_tbl = df.to_html(index=False, classes='table table-striped table-sm table-hover text-left', justify="left")
+    html_tbl = html_tbl.replace("\\n","<br>")
+    html_tbl = html_tbl.replace('<thead>', '<thead class="table-primary", style="vertical-align: middle">')
+    html_tbl = html_tbl.replace('<tbody>', '<tbody class="table-group-divider">')
+    result = div_header + html_tbl + "</div></div></div>"
+    return result
 
 def callback_format(value:str):
     if value.lower() not in VALID_OUTPUT_FORMAT:
@@ -204,12 +222,20 @@ def report_table_summary(api_object:openapi_parsing.ApiObject, format:str, outfi
 
     try:
         if format == "xlsx":
-            save_to_xlsx(df_schemas, df_params, df_fields, df_common, outfile)
+            df_dict = {
+                "Schemas": (df_schemas,{"A:A":50, "B:B":10, "C:C":35, "D:D":100}),
+                "Parameters": (df_params,{"A:A":30, "B:E":10, "F:H":100}),
+                "Fields": (df_fields,{"A:A":30, "B:D":10, "E:G":100}),
+                "Common": (df_common, {"A:A":30, "B:E":10, "F:H":100,"I:K":10, "L:N":100})
+                }
+            save_to_xlsx(df_dict, outfile)
         elif format == "html":
-            save_to_html(df_schemas, "Schemas", "out/schemas.html")
-            save_to_html(df_params, "Params", "out/params.html")
-            save_to_html(df_fields, "Fields", "out/fields.html")
-            save_to_html(df_common, "Common Fields", "out/common.html")
+            df_dict = {
+                "Parameters": df_params,
+                "Fields": df_fields,
+                "Common": df_common
+                }
+            save_to_html(df_dict, outfile)
         elif format == "json":
             save_to_json(api_object, outfile)
     except Exception as e:
@@ -231,27 +257,7 @@ def save_logger_options(log_options:utils.ColorLoggerOptions):
     #     print("obj.%s = %r" % (attr, getattr(log_options, attr)))
     pass
 
-def save_to_xlsx(df_schemas, df_params, df_fields, df_common, outfile):
-    writer = pd.ExcelWriter(outfile, engine= "xlsxwriter")
-    df_schemas.to_excel(writer, index=False, sheet_name='Schemas', freeze_panes=(1,1))
-    df_params.to_excel(writer, index=False, sheet_name='Params', freeze_panes=(1,1))
-    df_fields.to_excel(writer, index=False, sheet_name='Fields', freeze_panes=(1,1))
-    df_common.to_excel(writer, index=False, sheet_name='Common', freeze_panes=(1,1))
-    
-    if all_args["excel_with_layout"]:
-        try:
-            xls_formatting(writer=writer, sheet_name="Schemas", column_names=df_schemas.columns.values, settings={"A:A":50, "B:B":10, "C:C":35, "D:D":100})
-            xls_formatting(writer=writer, sheet_name="Params", column_names=df_params.columns.values, settings={"A:A":30, "B:E":10, "F:H":100})
-            xls_formatting(writer=writer, sheet_name="Fields", column_names=df_fields.columns.values, settings={"A:A":30, "B:D":10, "E:G":100})
-            xls_formatting(writer=writer, sheet_name="Common", column_names=df_common.columns.values, settings={"A:A":30, "B:E":10, "F:H":100,"I:K":10, "L:N":100})
-        except Exception as e:
-            logger.error(f"Cannot customize excel file '{outfile}'")
-            logger.error(f"{str(e)}")
-        else:
-            logger.log(SUCCESS,f"Extra layout/formatting applied to excel file")
-    writer.close()
-
-def save_to_html(df:pd.DataFrame, title:str, outfile:str):
+def save_to_html(df_dict:dict, outfile:Path):
     html_top = f"""
 <!doctype html>
 <html lang="en">
@@ -259,15 +265,24 @@ def save_to_html(df:pd.DataFrame, title:str, outfile:str):
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- Optional meta tags -->
+    <meta name="description" content="Data Dictionary from openapi">
+    <meta name="author" content="{__author__}">
+    <meta name="generator" content="Python script">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
 
-    <title>Data Dictionary - {title}</title>
+    <title>Data Dictionary - {os.path.basename(all_args["openapi_file"])}</title>
 </head>
 <body>
-    <h1>Data Dictionary - {title}</h1>
+    <h1>Data Dictionary</h1>
     <div style="margin: 2rem;">
+    <hr>    
+    <article><strong>Source: </strong>{os.path.abspath(all_args["openapi_file"])}</article>
+    <article><strong>Generated on: </strong>{datetime.datetime.now()}</article>
+    <hr>
+    <div class="accordion" id="accordion_openapi">
     """
     html_end = f"""
     </div>
@@ -275,17 +290,13 @@ def save_to_html(df:pd.DataFrame, title:str, outfile:str):
 </body>
 </html>
     """
-    html_tbl = df.to_html(index=False, classes='table table-striped table-sm table-hover text-left', justify="left")
-    html_tbl = html_tbl.replace("\\n","<br>")
-    html_tbl = html_tbl.replace('<thead>', '<thead class="table-primary", style="vertical-align: middle">')
-    html_tbl = html_tbl.replace('<tbody>', '<tbody class="table-group-divider">')
-
     with open(outfile, "w") as f:
         f.write(html_top)
-        f.write(html_tbl)    
+        for title, df in df_dict.items():
+            f.write(build_html_table(title, df))    
         f.write(html_end)
-        
-def save_to_json(api_object:openapi_parsing.ApiObject, outfile):   
+       
+def save_to_json(api_object:openapi_parsing.ApiObject, outfile:Path):   
     to_return={}
     params_lst=[]
     for k,v in sorted(api_object.param_dict.items()):
@@ -299,6 +310,20 @@ def save_to_json(api_object:openapi_parsing.ApiObject, outfile):
 
     with open(outfile, "w") as f:
         json.dump(to_return, f, indent=4)
+
+def save_to_xlsx(df_dict:dict, outfile=Path):
+    writer = pd.ExcelWriter(outfile, engine= "xlsxwriter")
+    for title,(df,col_size) in df_dict.items():
+        df.to_excel(writer, index=False, sheet_name=title, freeze_panes=(1,1))
+        if all_args["excel_with_layout"]:
+            try:
+                xls_formatting(writer=writer, sheet_name=title, column_names=df.columns.values, settings=col_size)
+            except Exception as e:
+                logger.error(f"Cannot customize excel file '{outfile}'")
+                logger.error(f"{str(e)}")
+            else:
+                logger.log(SUCCESS,f"Extra layout/formatting applied on sheet '{title}'")
+    writer.close()
 
 def validate_params():
     if not all_args["outfile"]:
@@ -368,6 +393,7 @@ def main(openapi_file:Path = typer.Argument(..., exists=True, readable=True, res
 
     # Put all arguments in a dictionnary & perform extra validation or default value assigment
     # Needed in order to be able to compare/ use value of other parameters, what was not possible using callback procedure
+    global all_args
     all_args["openapi_file"]=openapi_file
     all_args["format"]=format
     all_args["outfile"]=outfile
