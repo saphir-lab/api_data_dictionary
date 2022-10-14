@@ -173,17 +173,12 @@ def get_filename_elements(fullpath) -> dict[str,str]:
 
 def get_logger(console_logging_level:int=0, logfile:Path=None) -> utils.ColorLogger:
     global SUCCESS
-
     SUCCESS = 25
     APPNAME, _ = os.path.splitext(os.path.basename(__file__))
-    # CUR_DIR=os.path.dirname(os.path.abspath(__file__))
-    # LOG_DIR=os.path.join(CUR_DIR,"log")
-    # LOGFILE = os.path.join(LOG_DIR,APPNAME+".log")
     
     if not console_logging_level:
         console_logging_level=SUCCESS
 
-    # Sample loggin creation with logging entries
     logging.addLevelName(SUCCESS, 'SUCCESS')
     log_options = utils.ColorLoggerOptions(logfile_name=logfile, console_logging_level=console_logging_level)
     logger = utils.ColorLogger(name=APPNAME, options=log_options)
@@ -251,16 +246,8 @@ def report_table_summary(api_object:openapi_parsing.ApiObject, format:str, outfi
         logger.log(SUCCESS,f"Result saved to file: '{outfile}'")
 
 def save_logger_options(log_options:utils.ColorLoggerOptions) -> None:
-    # with open("log_settings.json", "w") as lo:
-    #     json.dump(log_options.__dict__ , lo) 
-    print (log_options.console_formatter.__class__)
-    print (log_options.console_formatter._fmt)
-    print (log_options.logfile_formatter._fmt)
-    print (log_options.__dict__)
-
-    # for attr in dir(log_options):
-    #     print("obj.%s = %r" % (attr, getattr(log_options, attr)))
-    pass
+    with open("logger_options.json", "w") as lo:
+        lo.write(log_options.to_json(indent=4)) 
 
 def save_to_html(df_dict:dict[str,pd.DataFrame], outfile:Path) -> None:
     html_top = f"""
@@ -438,7 +425,7 @@ def main(openapi_file:Path = typer.Argument(..., exists=True, readable=True, res
 
     if all_args["logfile"]:
         logger.log(SUCCESS, f'logfile available on : {all_args["logfile"]}')
-    
+        
 if __name__ == "__main__":
     console.clear_screen()
     typer.run(main)

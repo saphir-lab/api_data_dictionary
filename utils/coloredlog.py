@@ -10,8 +10,18 @@ Description:
     - Possibility to log on both conosle & file but using different formatter for console and log file
 '''
 import colorama as c
+import json
 import logging
 import os
+
+def get_formatter_definition(fmt_obj) -> str:
+    fmt = str(fmt_obj._fmt)
+    module_name = str(fmt_obj.__class__.__module__)
+    class_name = str(fmt_obj.__class__.__name__)
+    result = class_name + "('" + fmt + "')"
+    if not module_name == "__main__" : 
+        result = module_name + "." + result
+    return result
 
 class ColorFormatter(logging.Formatter):
     c.init(autoreset=True)
@@ -47,12 +57,25 @@ class ColorLoggerOptions():
         self.logfile_name = logfile_name
         self.logfile_formatter = logfile_formatter
         self.logfile_logging_level = logfile_logging_level
+    
+    def to_json(self, indent:int=None):
+        result = {
+            "console": self.console,
+            # "console_formatter":  "ColorFormatter('%(levelname)s - %(message)s')", 
+            "console_formatter":  get_formatter_definition(self.console_formatter),
+            "console_logging_level": self.console_logging_level,
+            "logfile_name": str(self.logfile_name),
+            # "logfile_formatter": "logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')",
+            "logfile_formatter": get_formatter_definition(self.logfile_formatter),
+            "logfile_logging_level": self.logfile_logging_level
+        }
+        return json.dumps(result, indent=indent)
 
 class ColorLogger(logging.getLoggerClass()):
-   def __init__(self, name="default", options=ColorLoggerOptions()):
-    
-        # logging.Logger.__init__(self, name, logging.DEBUG)
+    def __init__(self, name="default", options=ColorLoggerOptions()):
         logging.Logger.__init__(self, name, logging.DEBUG)
+        
+        # Will log to a logfile
         if options.logfile_name:
             path = os.path.dirname(os.path.abspath(options.logfile_name))
             if path and not os.path.exists(path):
@@ -88,6 +111,8 @@ if __name__ == "__main__":
     # Sample logging creation with logging entries
     logging.addLevelName(SUCCESS, 'SUCCESS')
     log_options = ColorLoggerOptions(logfile_name=LOGFILE, console_logging_level=SUCCESS)
+    print(log_options.to_json(indent=4))
+
     # Uncomment some other options here below to change behavior
     # log_options.logfile_logging_level=logging.INFO
     # log_options.logfile_formatter=logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')

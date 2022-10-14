@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 __author__ = 'P. Saint-Amand'
 __version__ = '1.0.0'
+LOGGER_OPTIONS = "logger_options.json" 
 
 # Standard Python Modules
 import json
+import logging
 import re
 import sys
+from os.path import exists
 from typing import Any
 
 # External Python Modules
@@ -15,6 +18,20 @@ from pydantic import Json
 import utils
 
 #Logging module configuration
+options=utils.ColorLoggerOptions()
+# BUG Working only when setting file exists before run of main program (so not take into account specific setting of main :-( )
+# if exists(LOGGER_OPTIONS):
+#     print(f"Loading Options from file")
+#     with open(LOGGER_OPTIONS, "r") as options_file:
+#         options_dict:dict = json.load(options_file)
+#     options=utils.ColorLoggerOptions(console=options_dict.get("console",None),
+#                                     console_formatter = eval(options_dict.get("console_formatter",None)),
+#                                     console_logging_level = options_dict.get("console_logging_level",None),
+#                                     logfile_name = options_dict.get("logfile_name",None),
+#                                     logfile_formatter = eval(options_dict.get("logfile_formatter",None)),
+#                                     logfile_logging_level = options_dict.get("logfile_logging_level",None)
+#                                     )
+# logger = utils.ColorLogger(name=__name__, options=options)
 logger = utils.ColorLogger(name=__name__)
 
 def default(obj):
@@ -471,12 +488,12 @@ if __name__ == "__main__":
     # logger.basicConfig(level=logger.DEBUG,format='%(asctime)s : %(levelname)s : %(message)s')
     # logger.basicConfig(level=logger.INFO,format='%(asctime)s : %(levelname)s : %(message)s')
 
-    test_file = "api_doc/oss.yaml"
-    # test_file = "api_doc/pet_store.yaml"
-    # test_file = "api_doc/tid.json"
-    # test_file = "api_doc/WhoisEnrichment.json"
-    # test_file = "api_doc/jikan.json"
-    # test_file = "api_doc/github.yaml"
+    test_file = "sample_input/oss.yaml"
+    # test_file = "sample_input/pet_store.yaml"
+    # test_file = "sample_input/tid.json"
+    # test_file = "sample_input/WhoisEnrichment.json"
+    # test_file = "sample_input/jikan.json"
+    # test_file = "sample_input/github.yaml"
 
     with open(test_file, encoding="UTF-8", errors="ignore") as config_file:
         f = yaml.safe_load(config_file)
@@ -487,9 +504,6 @@ if __name__ == "__main__":
     for k, v in oss.param_dict.items():
         print (f"- {k}: {v.to_json()}\n")
     exit()
-   
-   
-   
    
     # print (oss.api_info)
     # print (oss.api_version)
