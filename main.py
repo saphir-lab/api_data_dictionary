@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 __author__ = 'P. Saint-Amand'
-__version__ = 'V 0.4.1'
+__version__ = 'V 0.4.2'
 
 # Standard Python Modules
 from cgitb import html
 import datetime
+from genericpath import isdir
 import json
 import logging
 import os
@@ -46,6 +47,11 @@ def callback_format(value:str) -> str:
     if value.lower() not in VALID_OUTPUT_FORMAT:
         raise typer.BadParameter(f"Possible values for format are: {VALID_OUTPUT_FORMAT}")
     return value.lower()
+
+def callback_outdir(value:Path) -> Path:
+    if value and not value.is_dir() and os.path.splitext(value)[1]:
+        raise typer.BadParameter(f"outdir must be a DIRECTORY (not a file)")
+    return value
 
 def callback_version(value:bool) -> None:
     if value:
@@ -328,17 +334,25 @@ def save_to_xlsx(df_dict:dict[str,tuple[pd.DataFrame, dict[str,str]]], outfile=P
     writer.close()
 
 def validate_params() -> None:
-    if not all_args["outfile"]:
-        # output will be same location as input file
-        outdir = os.path.dirname(os.path.abspath(all_args["openapi_file"]))
+    # Generate default value for missing outfile and/or outdir parameters
+    if all_args["outfile"] and all_args["outdir"]:  # Both parameters have been specified
+        all_args["outdir"] = os.path.dirname(os.path.abspath(all_args["outfile"]))
+        logger.warning(f"Both outdir and outfile parameters specified. outdir overwrite with path of outfile : {all_args['outdir']}")
+    elif all_args["outdir"]:        # only outdir has been specified
+        print("only outdir has been specified")
         filename, _ = os.path.splitext(os.path.basename(all_args["openapi_file"]))
         filename += "." + all_args["format"]
-        all_args["outfile"] = os.path.join(outdir,filename)
-    else:
-        # retrieve path of output file specified as parameter
-        outdir = os.path.dirname(os.path.abspath(all_args["outfile"]))
-    
+        all_args["outfile"] = os.path.join(all_args["outdir"],filename)
+    elif all_args["outfile"]:       # only outfile has been specified
+        all_args["outdir"] = os.path.dirname(os.path.abspath(all_args["outfile"]))
+    else:                           # No parameter specified regarding output
+        all_args["outdir"] = os.path.dirname(os.path.abspath(all_args["openapi_file"]))
+        filename, _ = os.path.splitext(os.path.basename(all_args["openapi_file"]))
+        filename += "." + all_args["format"]
+        all_args["outfile"] = os.path.join(all_args["outdir"],filename)
+
     # create output directory if not exists
+    outdir=all_args["outdir"]
     if not os.path.exists(outdir):
         logger.warning(f"Output directory doesn't exists: '{outdir}'")
         try:
@@ -349,6 +363,13 @@ def validate_params() -> None:
             raise typer.Abort()
         else:
             logger.log(SUCCESS, f"Output directory successfully created : '{outdir}'")
+
+    # Adapt file extension if not correct
+    file_name, file_ext = os.path.splitext(all_args["outfile"])
+    if not file_ext == "."+all_args["format"]:
+        all_args["outfile"]= file_name + "." + all_args["format"]
+        logger.warning(f"Outfile extension '{file_ext}' doesn't correspond to requested output format '{'.'+all_args['format']}'")
+        logger.warning(f"Outfile has be adapted to '{all_args['outfile']}'")
 
 def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list[str], settings:dict[str,str]) -> None:
     wb = writer.book
@@ -372,7 +393,8 @@ def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list[str]
 
 def main(openapi_file:Path = typer.Argument(..., exists=True, readable=True, resolve_path=True, show_default=False, help="The file name (with path) of the file to be analyzed. Both JSON and YAML formats are supported."),
         format:str = typer.Option("xlsx", "--format", "-f", help="Output format: cli, html, xlsx, json", callback=callback_format),
-        outfile:Path = typer.Option(None, "--outfile", "-o", exists=False, resolve_path=True, show_default="Same path and filename (with new extension) as openapi_file", help="File Name of the output file"),
+        outdir:Path = typer.Option(None, "--outdir", "-d", exists=False, resolve_path=True, show_default="Same directory as openapi_file", help="Locaton of the output file", callback=callback_outdir),
+        outfile:Path = typer.Option(None, "--outfile", "-o", exists=False, resolve_path=True, show_default="Same directory and filename (with new extension) as openapi_file", help="File Name of the output file"),
         banner:bool = typer.Option(True, help="Display a banner at start of the program", rich_help_panel="Customization and Utils"),
         debug:bool = typer.Option(False, help="Enable debug mode on the console", rich_help_panel="Customization and Utils"),
         excel_with_layout:bool = typer.Option(True, help="Do exta-formatting on all excel sheets", rich_help_panel="Customization and Utils"),
@@ -398,6 +420,7 @@ def main(openapi_file:Path = typer.Argument(..., exists=True, readable=True, res
     global all_args
     all_args["openapi_file"]=openapi_file
     all_args["format"]=format
+    all_args["outdir"]=outdir
     all_args["outfile"]=outfile
     all_args["banner"]=banner
     all_args["debug"]=debug
