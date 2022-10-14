@@ -3,9 +3,7 @@ __author__ = 'P. Saint-Amand'
 __version__ = 'V 0.4.2'
 
 # Standard Python Modules
-from cgitb import html
 import datetime
-from genericpath import isdir
 import json
 import logging
 import os
@@ -339,7 +337,6 @@ def validate_params() -> None:
         all_args["outdir"] = os.path.dirname(os.path.abspath(all_args["outfile"]))
         logger.warning(f"Both outdir and outfile parameters specified. outdir overwrite with path of outfile : {all_args['outdir']}")
     elif all_args["outdir"]:        # only outdir has been specified
-        print("only outdir has been specified")
         filename, _ = os.path.splitext(os.path.basename(all_args["openapi_file"]))
         filename += "." + all_args["format"]
         all_args["outfile"] = os.path.join(all_args["outdir"],filename)
