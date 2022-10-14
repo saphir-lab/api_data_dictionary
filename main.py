@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __author__ = 'P. Saint-Amand'
-__version__ = 'V 0.4.0'
+__version__ = 'V 0.4.1'
 
 # Standard Python Modules
 from cgitb import html
@@ -9,6 +9,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Any
 
 # External Python Modules
 import pandas as pd
@@ -24,7 +25,7 @@ import openapi_parsing
 console=utils.Console(colored=True)
 all_args={}
 
-def build_html_table(title:str, df:pd.DataFrame):
+def build_html_table(title:str, df:pd.DataFrame) -> str:
     div_header =  f"""<div class="accordion-item">
         <h2 class="accordion-header" id="{title}">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{title}" aria-expanded="false" aria-controls="collapse{title}">
@@ -41,17 +42,17 @@ def build_html_table(title:str, df:pd.DataFrame):
     result = div_header + html_tbl + "</div></div></div>"
     return result
 
-def callback_format(value:str):
+def callback_format(value:str) -> str:
     if value.lower() not in VALID_OUTPUT_FORMAT:
         raise typer.BadParameter(f"Possible values for format are: {VALID_OUTPUT_FORMAT}")
     return value.lower()
 
-def callback_version(value:bool):
+def callback_version(value:bool) -> None:
     if value:
         print(f"Data Dictionary Builder version: {__version__}")
         raise typer.Exit()
 
-def get_df_params(api_object:openapi_parsing.ApiObject):
+def get_df_params(api_object:openapi_parsing.ApiObject) -> pd.DataFrame:
     columns = [
     "Name",
     "Required",
@@ -92,7 +93,7 @@ def get_df_params(api_object:openapi_parsing.ApiObject):
     df_params = pd.DataFrame(rows, columns=columns)
     return df_params
 
-def get_df_schemas(api_object:openapi_parsing.ApiObject):
+def get_df_schemas(api_object:openapi_parsing.ApiObject) -> pd.DataFrame:
     columns = [
     "Name",
     "Type",
@@ -115,7 +116,7 @@ def get_df_schemas(api_object:openapi_parsing.ApiObject):
     df_schemas = pd.DataFrame(rows, columns=columns)
     return df_schemas
 
-def get_df_fields(api_object:openapi_parsing.ApiObject):
+def get_df_fields(api_object:openapi_parsing.ApiObject) -> pd.DataFrame:
     columns = [
     "Name",
     "Required",
@@ -149,7 +150,7 @@ def get_df_fields(api_object:openapi_parsing.ApiObject):
     df_fields = pd.DataFrame(rows, columns=columns)
     return df_fields
 
-def get_filename_elements(fullpath):
+def get_filename_elements(fullpath) -> dict[str,str]:
     filename_elements={}
     try:
         filename_elements["fullpath"]=fullpath
@@ -166,7 +167,7 @@ def get_filename_elements(fullpath):
         raise typer.Abort()    
     return filename_elements
 
-def get_logger(console_logging_level:int=0, logfile:Path=None):
+def get_logger(console_logging_level:int=0, logfile:Path=None) -> utils.ColorLogger:
     global SUCCESS
 
     SUCCESS = 25
@@ -185,7 +186,7 @@ def get_logger(console_logging_level:int=0, logfile:Path=None):
     # save_logger_options(log_options)
     return logger
 
-def load_openapi_file(filename):
+def load_openapi_file(filename) -> Any:
     fe = get_filename_elements(filename)
     filetype = fe["fileextension"].lower()
     if filetype not in VALID_OPENAPI_EXTENSIONS:
@@ -207,14 +208,14 @@ def load_openapi_file(filename):
             logger.log(SUCCESS, f"File '{filename}' successfuly loaded")
             return f
 
-def report_overview(api_object:openapi_parsing.ApiObject):
+def report_overview(api_object:openapi_parsing.ApiObject) -> None:
     print(f"- Number of parameters : {len(api_object.param_dict)}")
     print(f"- Number of fields : {len(api_object.request_fields_dict)}")
     same_field_name = list(set(api_object.param_dict.keys()).intersection(api_object.request_fields_dict.keys()))
     print(f"- Number of Parameters with same name as a field: {len(same_field_name)}")
     print(f"{same_field_name}")
 
-def report_table_summary(api_object:openapi_parsing.ApiObject, format:str, outfile:Path):
+def report_table_summary(api_object:openapi_parsing.ApiObject, format:str, outfile:Path) -> None:
     df_schemas = get_df_schemas(api_object)  
     df_params = get_df_params(api_object)  
     df_fields = get_df_fields(api_object)
@@ -245,7 +246,7 @@ def report_table_summary(api_object:openapi_parsing.ApiObject, format:str, outfi
     else:
         logger.log(SUCCESS,f"Result saved to file: '{outfile}'")
 
-def save_logger_options(log_options:utils.ColorLoggerOptions):
+def save_logger_options(log_options:utils.ColorLoggerOptions) -> None:
     # with open("log_settings.json", "w") as lo:
     #     json.dump(log_options.__dict__ , lo) 
     print (log_options.console_formatter.__class__)
@@ -257,7 +258,7 @@ def save_logger_options(log_options:utils.ColorLoggerOptions):
     #     print("obj.%s = %r" % (attr, getattr(log_options, attr)))
     pass
 
-def save_to_html(df_dict:dict, outfile:Path):
+def save_to_html(df_dict:dict[str,pd.DataFrame], outfile:Path) -> None:
     html_top = f"""
 <!doctype html>
 <html lang="en">
@@ -296,7 +297,7 @@ def save_to_html(df_dict:dict, outfile:Path):
             f.write(build_html_table(title, df))    
         f.write(html_end)
        
-def save_to_json(api_object:openapi_parsing.ApiObject, outfile:Path):   
+def save_to_json(api_object:openapi_parsing.ApiObject, outfile:Path) -> None:   
     to_return={}
     params_lst=[]
     for k,v in sorted(api_object.param_dict.items()):
@@ -311,9 +312,10 @@ def save_to_json(api_object:openapi_parsing.ApiObject, outfile:Path):
     with open(outfile, "w") as f:
         json.dump(to_return, f, indent=4)
 
-def save_to_xlsx(df_dict:dict, outfile=Path):
+def save_to_xlsx(df_dict:dict[str,tuple[pd.DataFrame, dict[str,str]]], outfile=Path) -> None:
     writer = pd.ExcelWriter(outfile, engine= "xlsxwriter")
     for title,(df,col_size) in df_dict.items():
+        df
         df.to_excel(writer, index=False, sheet_name=title, freeze_panes=(1,1))
         if all_args["excel_with_layout"]:
             try:
@@ -325,7 +327,7 @@ def save_to_xlsx(df_dict:dict, outfile=Path):
                 logger.log(SUCCESS,f"Extra layout/formatting applied on sheet '{title}'")
     writer.close()
 
-def validate_params():
+def validate_params() -> None:
     if not all_args["outfile"]:
         # output will be same location as input file
         outdir = os.path.dirname(os.path.abspath(all_args["openapi_file"]))
@@ -348,7 +350,7 @@ def validate_params():
         else:
             logger.log(SUCCESS, f"Output directory successfully created : '{outdir}'")
 
-def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list, settings:dict):
+def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list[str], settings:dict[str,str]) -> None:
     wb = writer.book
     ws = writer.sheets[sheet_name]
 
@@ -376,7 +378,7 @@ def main(openapi_file:Path = typer.Argument(..., exists=True, readable=True, res
         excel_with_layout:bool = typer.Option(True, help="Do exta-formatting on all excel sheets", rich_help_panel="Customization and Utils"),
         logfile:Path = typer.Option(None, "--logfile", "-l", exists=False, resolve_path=True,  help="logfile of detailed activities (debug mode)", rich_help_panel="Customization and Utils"),
         version:bool = typer.Option(False, "--version", "-v", callback=callback_version, is_eager=True, help="Display version of the program", rich_help_panel="Customization and Utils")
-        ):
+        ) -> None:
     """
     Read an open API documentation file then extact all fields, parameter, etc.\n
     with format and definition then produce a matrix with different fields discovered with related API where they are used.\n
