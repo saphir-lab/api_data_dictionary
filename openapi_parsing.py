@@ -34,11 +34,6 @@ options=utils.ColorLoggerOptions()
 # logger = utils.ColorLogger(name=__name__, options=options)
 logger = utils.ColorLogger(name=__name__)
 
-def default(obj):
-    if hasattr(obj, 'to_json'):
-        return obj.to_json()
-    raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
-
 def method_name():
     return sys._getframe(  ).f_back.f_code.co_name
 
@@ -514,6 +509,7 @@ class ApiRequestField():
                      "properties": list(self.properties), "required":self.required, "schemas": list(self.schemas), "types": list(self.types)
                      }
         return to_return
+        
     def to_json(self, indent=None):
         return json.dumps(self.to_dict(), indent=indent)
 

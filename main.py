@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __author__ = 'P. Saint-Amand'
-__version__ = 'V 0.4.3'
+__version__ = 'V 0.4.4'
 
 # Standard Python Modules
 import datetime
@@ -208,11 +208,19 @@ def load_openapi_file(filename) -> Any:
             return f
 
 def report_overview(api_object:openapi_parsing.ApiObject) -> None:
+    sep = '-'*15
+    print() 
+    print(f"{sep} Summary of Analysis {sep}")
+    print(f"- Info: {api_object.api_info}")
+    print(f"- Number of servers : {len(api_object.servers)}")
+    print(f"- Number of paths : {len(api_object.paths)}")
+    print(f"- Number of schemas: {len(api_object.schemas_dict)}")
     print(f"- Number of parameters : {len(api_object.param_dict)}")
     print(f"- Number of fields : {len(api_object.request_fields_dict)}")
     same_field_name = list(set(api_object.param_dict.keys()).intersection(api_object.request_fields_dict.keys()))
     print(f"- Number of Parameters with same name as a field: {len(same_field_name)}")
-    print(f"{same_field_name}")
+    print (sep*4)
+    print()
 
 def report_table_summary(api_object:openapi_parsing.ApiObject, format:str, outfile:Path) -> None:
     df_schemas = get_df_schemas(api_object)  
@@ -365,7 +373,7 @@ def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list[str]
         ws.write(0, col, value, fmt_header)
 
 def main(openapi_file:Path = typer.Argument(..., exists=True, readable=True, resolve_path=True, show_default=False, help="The file name (with path) of the file to be analyzed. Both JSON and YAML formats are supported."),
-        format:str = typer.Option("xlsx", "--format", "-f", help="Output format: cli, html, xlsx, json", callback=callback_format),
+        format:str = typer.Option("xlsx", "--format", "-f", help="Output format: xlsx, html, json", callback=callback_format),
         outdir:Path = typer.Option(None, "--outdir", "-d", exists=False, resolve_path=True, show_default="Same directory as openapi_file", help="Locaton of the output file", callback=callback_outdir),
         outfile:Path = typer.Option(None, "--outfile", "-o", exists=False, resolve_path=True, show_default="Same directory and filename (with new extension) as openapi_file", help="File Name of the output file"),
         banner:bool = typer.Option(True, help="Display a banner at start of the program", rich_help_panel="Customization and Utils"),
