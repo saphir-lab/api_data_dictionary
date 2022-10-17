@@ -325,8 +325,28 @@ class ApiObject():
             param_ref_dict[param_ref_name].add_spec(param_specs)
         return param_ref_dict
 
+    def to_dict(self):
+        to_return={}
+
+        schemas_lst=[]
+        for k,v in sorted(self.schemas_dict.items()):
+            schemas_lst.append(v.to_dict())
+        to_return["Schemas"]=schemas_lst
+
+        params_lst=[]
+        for k,v in sorted(self.param_dict.items()):
+            params_lst.append(v.to_dict())
+        to_return["Parameters"]=params_lst
+
+        fields_lst=[]
+        for k,v in sorted(self.request_fields_dict.items()):
+            fields_lst.append(v.to_dict())
+        to_return["Fields"]=fields_lst
+        
+        return to_return
+
     def to_json(self, indent=None):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=indent)
+        return json.dumps(self.to_dict(), indent=indent)
         
 class ApiParameterRef():
     def __init__(self, ref_name:str):
@@ -342,8 +362,12 @@ class ApiParameterRef():
     def add_spec(self, spec:dict):       
         self.specs = spec
  
+    def to_dict(self):
+        to_return = {"ref_name": self.ref_name, "specs": list(self.specs)}
+        return to_return
+        
     def to_json(self, indent=None):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=indent)
+        return json.dumps(self.to_dict(), indent=indent)
 
 class ApiParameterField():
     def __init__(self, fieldname:str):
@@ -408,11 +432,14 @@ class ApiParameterField():
             self.add_schema(spec.get("schema",{}))
             self.add_schema_type(spec.get("schema",{}).get("type",""))
 
-    def to_json(self, indent=None):
+    def to_dict(self):
         to_return = {"fieldname": self.fieldname, "descriptions": list(self.descriptions), "locations":list(self.locations), "paths": list(self.paths), "required":self.required,
                      "schemas": list(self.schemas), "schema_types": list(self.schema_types), "specs": list(self.specs)
                      }
-        return json.dumps(to_return, indent=indent)
+        return to_return
+        
+    def to_json(self, indent=None):
+        return json.dumps(self.to_dict(), indent=indent)
 
 class ApiSchema():
     def __init__(self, schemaname:str):
@@ -437,8 +464,12 @@ class ApiSchema():
         if fieldname:
             self.fields.add(fieldname)
     
+    def to_dict(self):
+        to_return = {"schemaname": self.schemaname, "type": self.type, "fields": list(self.fields), "paths": list(self.paths)}
+        return to_return
+
     def to_json(self, indent=None):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=indent)
+        return json.dumps(self.to_dict(), indent=indent)
 
 class ApiRequestField():
     def __init__(self, fieldname:str):
@@ -478,11 +509,14 @@ class ApiRequestField():
         if type:
             self.types.add(type)
 
-    def to_json(self, indent=None):
+    def to_dict(self):
         to_return = {"fieldname": self.fieldname, "descriptions": list(self.descriptions), "paths": list(self.paths), 
                      "properties": list(self.properties), "required":self.required, "schemas": list(self.schemas), "types": list(self.types)
                      }
-        return json.dumps(to_return, indent=indent)   
+        return to_return
+    def to_json(self, indent=None):
+        return json.dumps(self.to_dict(), indent=indent)
+
 if __name__ == "__main__":
     import yaml
     # logger.basicConfig(level=logger.DEBUG,format='%(asctime)s : %(levelname)s : %(message)s')

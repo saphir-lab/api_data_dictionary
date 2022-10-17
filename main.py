@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __author__ = 'P. Saint-Amand'
-__version__ = 'V 0.4.2'
+__version__ = 'V 0.4.3'
 
 # Standard Python Modules
 import datetime
@@ -289,19 +289,8 @@ def save_to_html(df_dict:dict[str,pd.DataFrame], outfile:Path) -> None:
         f.write(html_end)
        
 def save_to_json(api_object:openapi_parsing.ApiObject, outfile:Path) -> None:   
-    to_return={}
-    params_lst=[]
-    for k,v in sorted(api_object.param_dict.items()):
-        params_lst.append(v.to_json())
-    to_return["Parameters"]=params_lst
-
-    fields_lst=[]
-    for k,v in sorted(api_object.request_fields_dict.items()):
-        fields_lst.append(v.to_json())
-    to_return["Fields"]=fields_lst
-
     with open(outfile, "w") as f:
-        json.dump(to_return, f, indent=4)
+        json.dump(api_object.to_dict(), f, indent=4)
 
 def save_to_xlsx(df_dict:dict[str,tuple[pd.DataFrame, dict[str,str]]], outfile=Path) -> None:
     writer = pd.ExcelWriter(outfile, engine= "xlsxwriter")
