@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __author__ = 'P. Saint-Amand'
-__version__ = 'V 0.4.4'
+__version__ = 'V 0.4.5'
 
 # Standard Python Modules
 import datetime
