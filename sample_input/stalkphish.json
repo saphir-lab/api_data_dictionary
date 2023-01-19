@@ -1,0 +1,410 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+      "title": "StalkPhish.io API Documentation",
+      "description": "You need to [register](/accounts/register/) on stalkphish.io to use the API. ",
+      "version": "1.0",
+      "contact": {
+        "name": "contact@stalkphish.com",
+        "url": "https://stalkphish.com/contact/"
+      }
+    },
+    "tags": [
+      {
+        "name": "Free view"
+      },
+      {
+        "name": "Standard view"
+      },
+      {
+        "name": "Pro view"
+      }
+    ],
+    "paths": {
+      "/api/v1/me": {
+        "get": {
+          "operationId": "api_v1_me_retrieve",
+          "description": "Return informations about account linked to API key. Limited to 100 request/day, out of profile quota.",
+          "tags": [
+            "Free view", "Standard view", "Pro view"
+          ],
+          "security": [
+            {
+              "Token": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Success"
+            },
+            "401": {
+              "description": "Authentication credentials were not provided."
+            },
+            "429": {
+              "description": "Request was throttled (you exceeded the daily quota)"
+            }
+          },
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "examples": {
+                  "All views": {
+                    "value": {
+                        "username": "tad",
+                        "email": "tad@stalkphish.io",
+                        "api_key": "556163459a2b93b0e0dc7f9dfacb2a8b75dc4005",
+                        "subscribed_plan": "Free"
+                      }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/last": {
+        "get": {
+          "operationId": "api_v1_last_retrieve",
+          "description": "Return n last results, with n depending on your subscription.",
+          "tags": [
+            "Free view", "Standard view", "Pro view"
+          ],
+          "security": [
+            {
+              "Token": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Success"
+            },
+            "401": {
+              "description": "Authentication credentials were not provided."
+            },
+            "429": {
+              "description": "Request was throttled (you exceeded the daily quota)."
+            }
+          },
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "examples": {
+                  "Free view": {
+                    "value": {
+                      "siteurl": "http://call-amazon.servehttp.com/",
+                      "sitedomain": "call-amazon.servehttp.com",
+                      "pagetitle": "Index of /",
+                      "firstseentime": "2021-03-28T20:32:20Z",
+                      "firstseencode": "200",
+                      "ipaddress": "161.35.127.69",
+                      "asn": "14061",
+                      "asndesc": "DIGITALOCEAN-ASN, US",
+                      "asnreg": "arin",
+                      "extracted_emails": null
+                      }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      
+      "/api/v1/search/email/{search}": {
+        "get": {
+          "operationId": "api_v1_search_email_retrieve",
+          "description": "Return results of e-mail found in phishing kits.",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "search",
+              "schema": {
+                "type": "string"
+              },
+              "required": true
+            }
+          ],
+          "tags": [
+            "Pro view"
+          ],
+          "security": [
+            {
+              "Token": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Success"
+            },
+            "401": {
+              "description": "Authentication credentials were not provided."
+            },
+            "429": {
+              "description": "Request was throttled (you exceeded the daily quota)"
+            }
+          },
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "examples": {
+                  "Free view": {
+                    "value": {
+                      "error":"You don't have access to this search option with you profile"
+                      }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/search/ipv4/{search}": {
+        "get": {
+          "operationId": "api_v1_search_ipv4_retrieve",
+          "description": "Return results of IPv4 search.",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "search",
+              "schema": {
+                "type": "IPv4 address"
+              },
+              "required": true
+            }
+          ],
+          "tags": [
+            "Free view", "Standard view", "Pro view"
+          ],
+          "security": [
+            {
+              "Token": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Success"
+            },
+            "401": {
+              "description": "Authentication credentials were not provided."
+            },
+            "429": {
+              "description": "Request was throttled (you exceeded the daily quota)"
+            }
+          },
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "examples": {
+                  "Free view": {
+                    "value": {
+                      "siteurl": "https://www.wsimarketingexperts.co.uk/wellsfargo/home/myaccount/uploads/",
+                      "sitedomain": "www.wsimarketingexperts.co.uk",
+                      "pagetitle": "Wells Fargo: uploads card Wells Fargo",
+                      "firstseentime": "2021-03-25T16:14:56Z",
+                      "firstseencode": "timeout",
+                      "ipaddress": "198.54.116.114",
+                      "asn": "22612",
+                      "asndesc": "NAMECHEAP-NET, US",
+                      "asnreg": "arin",
+                      "extracted_emails": "maxabbas0@protonmail.com"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/search/title/{search}": {
+        "get": {
+          "operationId": "api_v1_search_title_retrieve",
+          "description": "Return results of string search appearing in a website title.",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "search",
+              "schema": {
+                "type": "string"
+              },
+              "required": true
+            }
+          ],
+          "tags": [
+            "Standard view", "Pro view"
+          ],
+          "security": [
+            {
+              "Token": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Success"
+            },
+            "401": {
+              "description": "Authentication credentials were not provided."
+            },
+            "429": {
+              "description": "Request was throttled (you exceeded the daily quota)"
+            }
+          },
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "examples": {
+                  "Free view": {
+                    "value": {
+                      "error":"You don't have access to this search option with you profile"
+                      }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/api/v1/search/url/{search}": {
+        "get": {
+          "operationId": "api_v1_search_url_retrieve",
+          "description": "Return results of string search appearing in a URL.",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "search",
+              "schema": {
+                "type": "string"
+              },
+              "required": true
+            }
+          ],
+          "tags": [
+            "Free view", "Standard view", "Pro view"
+          ],
+          "security": [
+            {
+              "Token": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Success"
+            },
+            "401": {
+              "description": "Authentication credentials were not provided."
+            },
+            "429": {
+              "description": "Request was throttled (you exceeded the daily quota)"
+            }
+          },
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "examples": {
+                  "Free view": {
+                    "value": {
+                      "siteurl": "http://futuristictec.com/after_login_code/admin_panel/client/tracking-ch/ch/login/cc.php",
+                      "sitedomain": "futuristictec.com",
+                      "pagetitle": "Identifiez-vous avec votre compte",
+                      "firstseentime": "2021-03-28T14:06:38Z",
+                      "firstseencode": "200",
+                      "ipaddress": "148.72.88.27",
+                      "asn": "26496",
+                      "asndesc": "AS-26496-GO-DADDY-COM-LLC, US",
+                      "asnreg": "arin",
+                      "extracted_emails": "a@b.123, a@192.168.0.1, kidamikky8@gmail.com, itisngapera@gmail.com, lkdfnvd@gmail.com, ngaperan@yahoo.com"
+                      }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+    "/api/v1/search/brand/{search}": {
+        "get": {
+          "operationId": "api_v1_search_brand_retrieve",
+          "description": "Return results of string search appearing in a brand name.",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "search",
+              "schema": {
+                "type": "string"
+              },
+              "required": true
+            }
+          ],
+          "tags": [
+            "Pro view"
+          ],
+          "security": [
+            {
+              "Token": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Success"
+            },
+            "401": {
+              "description": "Authentication credentials were not provided."
+            },
+            "429": {
+              "description": "Request was throttled (you exceeded the daily quota)"
+            }
+          },
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                },
+                "examples": {
+                  "Free view": {
+                    "value": {
+                      "error":"You don't have access to this search option with you profile"
+                      }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "securitySchemes": {
+        "Token": {
+          "type": "apiKey",
+          "in": "header",
+          "name": "Authorization",
+          "description": "Token-based authentication with required prefix \"Token\""
+        }
+      }
+    }
+  }
