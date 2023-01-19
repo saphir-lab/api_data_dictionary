@@ -197,7 +197,7 @@ class ApiObject():
                 elif body_schema_type == "array":
                     fields_to_add_path = self._parse_schema_type_array(schema_name="", schema_specs=body_schema)
                 else:
-                    self.logger.warning(f"{method_name()} - {full_path} - schema type '{body_schema_type}' doesn't not contains field name. Considered as a bad practive for body part")
+                    self.logger.warning(f"{method_name()} - {full_path} - schema type '{body_schema_type}' doesn't not contains field name. Considered as a bad practice for body part")
                     self.logger.debug(f"{method_name()} - Schema details: {body_schema}")
             else:
                 self.logger.warning(f"{method_name()} - {full_path} - schema without $ref or type.")
