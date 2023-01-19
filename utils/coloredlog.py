@@ -1,6 +1,6 @@
 '''
 Author : Philippe Saint-Amand
-Date : 2022-10-03
+Date : 2023-01-16
 
 Description:
     Goal of this script is to have possibility of :
@@ -13,6 +13,12 @@ import colorama as c
 import json
 import logging
 import os
+from pathlib import Path
+
+LOGLEVEL_SUCCESS = 15
+LOGLEVEL_DISABLE = 99999
+CUR_DIR=os.path.dirname(os.path.abspath(__file__))
+LOG_DIR=os.path.join(CUR_DIR,"../log")
 
 def get_formatter_definition(fmt_obj) -> str:
     fmt = str(fmt_obj._fmt)
@@ -44,10 +50,10 @@ class ColorFormatter(logging.Formatter):
 
 class ColorLoggerOptions():
     def __init__(self, 
-                console=True, 
+                console:bool=True, 
                 console_formatter = ColorFormatter("%(levelname)s - %(message)s"), 
                 console_logging_level = logging.WARNING,
-                logfile_name = "",
+                logfile_name:Path = "",
                 logfile_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
                 logfile_logging_level = logging.DEBUG
                 ):
@@ -72,7 +78,7 @@ class ColorLoggerOptions():
         return json.dumps(result, indent=indent)
 
 class ColorLogger(logging.getLoggerClass()):
-    def __init__(self, name="default", options=ColorLoggerOptions()):
+    def __init__(self, name:str="default", options=ColorLoggerOptions()):
         logging.Logger.__init__(self, name, logging.DEBUG)
         
         # Will log to a logfile
@@ -100,17 +106,30 @@ class ColorLogger(logging.getLoggerClass()):
             ch.setFormatter(options.console_formatter)
             self.addHandler(ch)
 
+def get_logger(logger_name:str=None, console_loglevel:int=LOGLEVEL_SUCCESS, file_loglevel:int=LOGLEVEL_DISABLE, logfile:Path=None, success_level=LOGLEVEL_SUCCESS) -> ColorLogger:
+    if not logger_name:
+        logger_name, _ = os.path.splitext(os.path.basename(__file__))
+    if (not logfile or logfile =="None") and file_loglevel != LOGLEVEL_DISABLE:
+        logfile = os.path.join(LOG_DIR,logger_name+".log")
+    if logfile and file_loglevel == LOGLEVEL_DISABLE:
+        file_loglevel = logging.DEBUG
+    logging.addLevelName(success_level, 'SUCCESS')
+    log_options = ColorLoggerOptions(logfile_name=logfile, console_logging_level=console_loglevel, logfile_logging_level=file_loglevel)
+    logger = ColorLogger(name=logger_name, options=log_options)
+    # save_logger_options(log_options)
+    return logger
+
 if __name__ == "__main__":
     # Some usefull variables 
-    SUCCESS = 25
     APPNAME, _ = os.path.splitext(os.path.basename(__file__))
     CUR_DIR=os.path.dirname(os.path.abspath(__file__))
-    LOG_DIR=os.path.join(CUR_DIR,"log")
+    LOG_DIR=os.path.join(CUR_DIR,"../log")
     LOGFILE = os.path.join(LOG_DIR,APPNAME+".log")
+    LOGFILE2 = os.path.join(LOG_DIR,APPNAME+"2.log")
 
     # Sample logging creation with logging entries
-    logging.addLevelName(SUCCESS, 'SUCCESS')
-    log_options = ColorLoggerOptions(logfile_name=LOGFILE, console_logging_level=SUCCESS)
+    logging.addLevelName(LOGLEVEL_SUCCESS, 'SUCCESS')
+    log_options = ColorLoggerOptions(logfile_name=LOGFILE, console_logging_level=LOGLEVEL_SUCCESS)
     print(log_options.to_json(indent=4))
 
     # Uncomment some other options here below to change behavior
@@ -124,4 +143,15 @@ if __name__ == "__main__":
     logger.warning('And this, too')
     logger.error('And non-ASCII stuff, too, like Øresund and Malmö')
     logger.critical('Try a critical message')
-    logger.log(SUCCESS, 'Then success level that is a custom level')
+    logger.log(LOGLEVEL_SUCCESS, 'Then success level that is a custom level')
+
+    print()
+    print("[+]Same thing but using function get_logger and debug level")
+    logger2 = get_logger(logger_name=APPNAME, logfile=LOGFILE2, file_loglevel=logging.DEBUG)
+#    logger2 = get_logger(logger_name=APPNAME)
+    logger2.debug('This message should go to the log file')
+    logger2.info('So should this')
+    logger2.warning('And this, too')
+    logger2.error('And non-ASCII stuff, too, like Øresund and Malmö')
+    logger2.critical('Try a critical message')
+    logger2.log(LOGLEVEL_SUCCESS, 'Then success level that is a custom level')

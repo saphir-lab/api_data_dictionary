@@ -32,6 +32,23 @@ class Console():
         self.colored=colored
         c.init()
 
+    def ask_input_file(self, question="Specify an existing file name: "):
+        """Loop requesting user for a file name until this one is found/exists
+
+        Returns:
+            str: a file name with appropriate path format
+        """
+        msg=""
+        file_in = ""
+        while not file_in:
+            if msg:
+                self.print_msg("ERROR", msg)
+            file_in = input(question).strip('"')
+            if not os.path.isfile(file_in):
+                msg = "File Specified doesn't exists. Please specify full path"
+                file_in=""
+        return file_in
+
     def clear_screen(self):
         os.system("cls||clear")
 
@@ -81,3 +98,13 @@ class Console():
         # else:
         #     msg = self.MSG_SEVERITY[severity] + msg
         print(msg)
+
+
+if __name__ == "__main__":
+    CONSOLE = Console(colored=True)
+    CONSOLE.clear_screen()
+    CONSOLE.print_msg(severity="STANDARD", msg=f'message with severity "STANDARD"')
+    CONSOLE.print_msg(severity="INFO", msg=f'message with severity "INFO"')
+    CONSOLE.print_msg(severity="WARNING", msg=f'message with severity "WARNING"')
+    CONSOLE.print_msg(severity="ERROR", msg=f'message with severity "ERROR"')
+    CONSOLE.ask_input_file()

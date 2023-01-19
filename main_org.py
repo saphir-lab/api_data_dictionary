@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 __author__ = 'P. Saint-Amand'
-__appname__ = 'api_data_dictionary'
-__version__ = 'V 1.0.0'
+__version__ = 'V 0.4.5'
 
 # Standard Python Modules
 import datetime
@@ -16,25 +15,14 @@ import pandas as pd
 import typer
 import yaml
 
-
 # Personal Python Modules
-from params import *
-from utils.coloredlog import get_logger
-from utils.filename import FileName     #CSVFile, ParameterFile
-from openapi_parsing import ApiObject
+from constants import *
+import utils
+import openapi_parsing
 
-### Global Variables
-# Possible values for a log level using logging module: CRITICAL:50; ERROR:40; WARNING:30; INFO:20, DEBUG:10
-# Possible values for a log level using CONSTANTS (can be adapted in init.py): LOGLEVEL_SUCCESS:15; LOGLEVEL_DISABLE:99999
-# LOGLEVEL_CONSOLE = LOGLEVEL_SUCCESS
-# LOGLEVEL_FILE = LOGLEVEL_DISABLE
-
-DEBUG_CONSOLE:bool=True
-if LOGLEVEL_CONSOLE == LOGLEVEL_DISABLE:
-    DEBUG_CONSOLE:bool=False
-
+### Variables
+console=utils.Console(colored=True)
 all_args={}
-output_format="txt"
 
 def build_html_table(title:str, df:pd.DataFrame) -> str:
     div_header =  f"""<div class="accordion-item">
@@ -65,30 +53,10 @@ def callback_outdir(value:Path) -> Path:
 
 def callback_version(value:bool) -> None:
     if value:
-        # print(f"{__appname__} {__version__}")
-        print(CONSOLE.get_app_banner(selection="random", banner_lst=BANNERS, appversion=__version__, creator="Designed by " + __author__))
+        print(f"Data Dictionary Builder version: {__version__}")
         raise typer.Exit()
 
-def init() -> None:
-    """ Clear Screen, display banner & start the logger. """
-    CONSOLE.clear_screen()
-    if all_args["banner"]:
-        print(CONSOLE.get_app_banner(selection="random", banner_lst=BANNERS, appversion=__version__, creator="Designed by " + __author__))
-    if all_args["debug"]:
-        LOGLEVEL_CONSOLE = LOGLEVEL_SUCCESS
-    else:
-        LOGLEVEL_CONSOLE = LOGLEVEL_DISABLE
-    if all_args["logfile"]:
-        LOGLEVEL_FILE = logging.DEBUG
-    else:
-        LOGLEVEL_FILE = LOGLEVEL_DISABLE
-    global logger
-    logger = get_logger(logger_name=__appname__, console_loglevel=LOGLEVEL_CONSOLE, file_loglevel=LOGLEVEL_FILE, logfile=all_args["logfile"], success_level=LOGLEVEL_SUCCESS)
-    logger.info(f"Application Start")
-    logger.info(f"Logging levels : Console={LOGLEVEL_CONSOLE}; File={LOGLEVEL_FILE}; Logfile='{all_args['logfile']}'")
-    logger.debug("Confirm Debug Mode is Activated")
-
-def get_df_params(api_object:ApiObject) -> pd.DataFrame:
+def get_df_params(api_object:openapi_parsing.ApiObject) -> pd.DataFrame:
     columns = [
     "Name",
     "Required",
@@ -129,7 +97,7 @@ def get_df_params(api_object:ApiObject) -> pd.DataFrame:
     df_params = pd.DataFrame(rows, columns=columns)
     return df_params
 
-def get_df_schemas(api_object:ApiObject) -> pd.DataFrame:
+def get_df_schemas(api_object:openapi_parsing.ApiObject) -> pd.DataFrame:
     columns = [
     "Name",
     "Type",
@@ -152,7 +120,7 @@ def get_df_schemas(api_object:ApiObject) -> pd.DataFrame:
     df_schemas = pd.DataFrame(rows, columns=columns)
     return df_schemas
 
-def get_df_fields(api_object:ApiObject) -> pd.DataFrame:
+def get_df_fields(api_object:openapi_parsing.ApiObject) -> pd.DataFrame:
     columns = [
     "Name",
     "Required",
@@ -203,6 +171,20 @@ def get_filename_elements(fullpath) -> dict[str,str]:
         raise typer.Abort()    
     return filename_elements
 
+def get_logger(console_logging_level:int=0, logfile:Path=None) -> utils.ColorLogger:
+    global SUCCESS
+    SUCCESS = 25
+    APPNAME, _ = os.path.splitext(os.path.basename(__file__))
+    
+    if not console_logging_level:
+        console_logging_level=SUCCESS
+
+    logging.addLevelName(SUCCESS, 'SUCCESS')
+    log_options = utils.ColorLoggerOptions(logfile_name=logfile, console_logging_level=console_logging_level)
+    logger = utils.ColorLogger(name=APPNAME, options=log_options)
+    # save_logger_options(log_options)
+    return logger
+
 def load_openapi_file(filename) -> Any:
     fe = get_filename_elements(filename)
     filetype = fe["fileextension"].lower()
@@ -222,10 +204,10 @@ def load_openapi_file(filename) -> Any:
             logger.error(f"{str(e)}")
             raise typer.Abort()
         else:
-            logger.log(LOGLEVEL_SUCCESS, f"File '{filename}' successfuly loaded")
+            logger.log(SUCCESS, f"File '{filename}' successfuly loaded")
             return f
 
-def report_overview(api_object:ApiObject) -> None:
+def report_overview(api_object:openapi_parsing.ApiObject) -> None:
     sep = '-'*15
     print() 
     print(f"{sep} Summary of Analysis {sep}")
@@ -240,7 +222,7 @@ def report_overview(api_object:ApiObject) -> None:
     print (sep*4)
     print()
 
-def report_table_summary(api_object:ApiObject, format:str, outfile:Path) -> None:
+def report_table_summary(api_object:openapi_parsing.ApiObject, format:str, outfile:Path) -> None:
     df_schemas = get_df_schemas(api_object)  
     df_params = get_df_params(api_object)  
     df_fields = get_df_fields(api_object)
@@ -269,7 +251,11 @@ def report_table_summary(api_object:ApiObject, format:str, outfile:Path) -> None
         logger.error(f"{str(e)}")
         raise typer.Abort()
     else:
-        logger.log(LOGLEVEL_SUCCESS,f"Result saved to file: '{outfile}'")
+        logger.log(SUCCESS,f"Result saved to file: '{outfile}'")
+
+def save_logger_options(log_options:utils.ColorLoggerOptions) -> None:
+    with open("logger_options.json", "w") as lo:
+        lo.write(log_options.to_json(indent=4)) 
 
 def save_to_html(df_dict:dict[str,pd.DataFrame], outfile:Path) -> None:
     html_top = f"""
@@ -310,7 +296,7 @@ def save_to_html(df_dict:dict[str,pd.DataFrame], outfile:Path) -> None:
             f.write(build_html_table(title, df))    
         f.write(html_end)
        
-def save_to_json(api_object:ApiObject, outfile:Path) -> None:   
+def save_to_json(api_object:openapi_parsing.ApiObject, outfile:Path) -> None:   
     with open(outfile, "w") as f:
         json.dump(api_object.to_dict(), f, indent=4)
 
@@ -326,42 +312,9 @@ def save_to_xlsx(df_dict:dict[str,tuple[pd.DataFrame, dict[str,str]]], outfile=P
                 logger.error(f"Cannot customize excel file '{outfile}'")
                 logger.error(f"{str(e)}")
             else:
-                logger.log(LOGLEVEL_SUCCESS,f"Extra layout/formatting applied on sheet '{title}'")
+                logger.log(SUCCESS,f"Extra layout/formatting applied on sheet '{title}'")
     writer.close()
 
-def main(openapi_file:Path = typer.Argument(..., exists=True, readable=True, resolve_path=True, show_default=False, help="The file name (with path) of the file to be analyzed. Both JSON and YAML formats are supported."),
-        format:str = typer.Option("xlsx", "--format", "-f", help="Output format: xlsx, html, json", callback=callback_format),
-        outdir:Path = typer.Option(None, "--outdir", "-d", exists=False, resolve_path=True, show_default="Same directory as openapi_file", help="Location of the output file", callback=callback_outdir),
-        outfile:Path = typer.Option(None, "--outfile", "-o", exists=False, resolve_path=True, show_default="Same directory and filename (with new extension) as openapi_file", help="File Name of the output file"),
-        banner:bool = typer.Option(BANNER_DISPLAY, help="Display a banner at start of the program", rich_help_panel="Customization and Utils"),
-        debug:bool = typer.Option(DEBUG_CONSOLE, help="Enable debug mode on the console", rich_help_panel="Customization and Utils"),
-        excel_with_layout:bool = typer.Option(True, help="Do exta-formatting on all excel sheets", rich_help_panel="Customization and Utils"),
-        logfile:Path = typer.Option(LOG_FILE, "--logfile", "-l", exists=False, resolve_path=True,  help="logfile of detailed activities (debug mode)", rich_help_panel="Customization and Utils"),
-        version:bool = typer.Option(False, "--version", "-v", callback=callback_version, is_eager=True, help="Display version of the program", rich_help_panel="Customization and Utils")
-        ) -> None:
-    # Put all arguments in a dictionnary & perform extra validation or default value assigment
-    # Needed in order to be able to compare/use value of other parameters, what was not possible using callback procedure
-    all_args["openapi_file"]=openapi_file
-    all_args["format"]=format
-    all_args["outdir"]=outdir
-    all_args["outfile"]=outfile
-    all_args["banner"]=banner
-    all_args["debug"]=debug
-    all_args["excel_with_layout"]=excel_with_layout
-    all_args["logfile"]=logfile
-    all_args["version"]=version
-    init()
-    validate_params()
-
-    api_content = load_openapi_file(all_args["openapi_file"])
-    api_object = ApiObject(api_content, logger=logger)
-    report_overview(api_object)
-    report_table_summary(api_object, all_args["format"], all_args["outfile"])
-
-    # End of program
-    if all_args["logfile"]:
-        logger.log(LOGLEVEL_SUCCESS, f'logfile with full debug information available on : {all_args["logfile"]}')
-        
 def validate_params() -> None:
     # Generate default value for missing outfile and/or outdir parameters
     if all_args["outfile"] and all_args["outdir"]:  # Both parameters have been specified
@@ -390,7 +343,7 @@ def validate_params() -> None:
             logger.error(f"{str(e)}")
             raise typer.Abort()
         else:
-            logger.log(LOGLEVEL_SUCCESS, f"Output directory successfully created : '{outdir}'")
+            logger.log(SUCCESS, f"Output directory successfully created : '{outdir}'")
 
     # Adapt file extension if not correct
     file_name, file_ext = os.path.splitext(all_args["outfile"])
@@ -398,12 +351,6 @@ def validate_params() -> None:
         all_args["outfile"]= file_name + "." + all_args["format"]
         logger.warning(f"Outfile extension '{file_ext}' doesn't correspond to requested output format '{'.'+all_args['format']}'")
         logger.warning(f"Outfile has be adapted to '{all_args['outfile']}'")
-
-    # Print all parameters value in case of debug mode
-    all_args_str=""
-    for k,v in all_args.items():
-        all_args_str += f"  - {k}: {v}\n"
-    logger.debug(f"Parameters :\n{all_args_str}")
 
 def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list[str], settings:dict[str,str]) -> None:
     wb = writer.book
@@ -425,6 +372,57 @@ def xls_formatting(writer:pd.ExcelWriter, sheet_name:str, column_names:list[str]
     for col , value in enumerate(column_names):
         ws.write(0, col, value, fmt_header)
 
+def main(openapi_file:Path = typer.Argument(..., exists=True, readable=True, resolve_path=True, show_default=False, help="The file name (with path) of the file to be analyzed. Both JSON and YAML formats are supported."),
+        format:str = typer.Option("xlsx", "--format", "-f", help="Output format: xlsx, html, json", callback=callback_format),
+        outdir:Path = typer.Option(None, "--outdir", "-d", exists=False, resolve_path=True, show_default="Same directory as openapi_file", help="Locaton of the output file", callback=callback_outdir),
+        outfile:Path = typer.Option(None, "--outfile", "-o", exists=False, resolve_path=True, show_default="Same directory and filename (with new extension) as openapi_file", help="File Name of the output file"),
+        banner:bool = typer.Option(True, help="Display a banner at start of the program", rich_help_panel="Customization and Utils"),
+        debug:bool = typer.Option(False, help="Enable debug mode on the console", rich_help_panel="Customization and Utils"),
+        excel_with_layout:bool = typer.Option(True, help="Do exta-formatting on all excel sheets", rich_help_panel="Customization and Utils"),
+        logfile:Path = typer.Option(None, "--logfile", "-l", exists=False, resolve_path=True,  help="logfile of detailed activities (debug mode)", rich_help_panel="Customization and Utils"),
+        version:bool = typer.Option(False, "--version", "-v", callback=callback_version, is_eager=True, help="Display version of the program", rich_help_panel="Customization and Utils")
+        ) -> None:
+    """
+    Read an open API documentation file then extact all fields, parameter, etc.\n
+    with format and definition then produce a matrix with different fields discovered with related API where they are used.\n
+    """
+    if banner:
+        print(console.get_app_banner(selection="random", banner_lst=banner_lst, appversion=__version__, creator="Designed by " + __author__))
+    #BUG - open_api_parsing doesn't take into account these parameters
+    global logger
+    if debug:
+        logger = get_logger(console_logging_level=logging.DEBUG, logfile=logfile)
+    else:
+        logger = get_logger(logfile=logfile)
+    logger.debug("Debug Mode Activated")
+
+    # Put all arguments in a dictionnary & perform extra validation or default value assigment
+    # Needed in order to be able to compare/ use value of other parameters, what was not possible using callback procedure
+    global all_args
+    all_args["openapi_file"]=openapi_file
+    all_args["format"]=format
+    all_args["outdir"]=outdir
+    all_args["outfile"]=outfile
+    all_args["banner"]=banner
+    all_args["debug"]=debug
+    all_args["excel_with_layout"]=excel_with_layout
+    all_args["logfile"]=logfile
+    all_args["version"]=version
+    validate_params()
+
+    all_args_str=""
+    for k,v in all_args.items():
+        all_args_str += f"  - {k}: {v}\n"
+    logger.debug(f"Parameters :\n{all_args_str}")
+
+    api_content = load_openapi_file(all_args["openapi_file"])
+    api_object = openapi_parsing.ApiObject(api_content)
+    report_overview(api_object)
+    report_table_summary(api_object, all_args["format"], all_args["outfile"])
+
+    if all_args["logfile"]:
+        logger.log(SUCCESS, f'logfile available on : {all_args["logfile"]}')
+        
 if __name__ == "__main__":
-    CONSOLE.clear_screen()
+    console.clear_screen()
     typer.run(main)

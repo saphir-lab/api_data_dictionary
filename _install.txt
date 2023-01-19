@@ -1,0 +1,34 @@
+--- to copy/paste on terminal for Windows ---
+python -m venv .venv
+.venv\Scripts\Activate.bat 
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+pip list
+
+--- to copy/paste on terminal for Linux / MacOS ---
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+pip install -r requirements.txt
+pip list
+
+
+------ Common after python environment creation-----
+Cleanup structure based on program needs:
+- adapt file 'utils/__init__.py to load only utils you need for your program
+- remove unnecessary folder (data, log, ...)
+- remove all sample.txt files in sub-folders
+
+Adapt content of 
+- constants.py (banner_lst, LOGLEVEL_CONSOLE, LOGLEVEL_FILE)
+- requirements.txt
+- README.md
+- RELEASE_NOTES.md
+- Optional: adapt company name under LICENSE.md
+
+Activate GIT
+- MANDATORY: delete hidden folder .git
+    - windows, with explorer
+    - Mac OS, using "rm -fr .git" then "git init"
+- Optional: Sync with Github and create new repository (private or public)
+    - ATTENTION, if you have not previously cleanup git folder, you will sync on python_boilerplate !!!
