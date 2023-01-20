@@ -10,4 +10,8 @@ out/
 
 # Files
 .*
+
+# include after exclusion
 !.gitignore
+# we can create kanban using vscode extension
+!.vscode/

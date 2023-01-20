@@ -1,0 +1,76 @@
+{
+  "todo": [
+    {
+      "assignedTo": {
+        "name": "Philippe Saint-Amand"
+      },
+      "category": "Parsing",
+      "creation_time": "2023-01-20T09:54:58.640Z",
+      "description": {
+        "content": "```paths/<api>/<method>/security```",
+        "mime": "text/markdown"
+      },
+      "id": "2",
+      "prio": 10,
+      "references": [],
+      "title": "fields under security"
+    },
+    {
+      "assignedTo": {
+        "name": "Philippe Saint-Amand"
+      },
+      "category": "Parsing",
+      "creation_time": "2023-01-20T09:59:34.107Z",
+      "description": {
+        "content": "```paths/<api>/<method>/responses/<response code>/content```",
+        "mime": "text/markdown"
+      },
+      "details": {
+        "content": "This one is important for GET Requests",
+        "mime": "text/markdown"
+      },
+      "id": "3",
+      "prio": 5,
+      "references": [],
+      "title": "Fields on Response Content"
+    },
+    {
+      "assignedTo": {
+        "name": "Philippe Saint-Amand"
+      },
+      "category": "Parsing",
+      "creation_time": "2023-01-20T10:05:06.642Z",
+      "id": "4",
+      "prio": 1,
+      "references": [],
+      "title": "Schema type \"allOf / oneOf\""
+    },
+    {
+      "assignedTo": {
+        "name": "Philippe Saint-Amand"
+      },
+      "category": "Parsing",
+      "creation_time": "2023-01-20T09:33:49.061Z",
+      "description": {
+        "content": "```paths/<api>/<method>/responses/<response code>/headers```",
+        "mime": "text/markdown"
+      },
+      "id": "1",
+      "references": [],
+      "title": "Fields on Response Headers"
+    },
+    {
+      "assignedTo": {
+        "name": "Philippe Saint-Amand"
+      },
+      "category": "error management",
+      "creation_time": "2023-01-20T10:06:21.621Z",
+      "id": "5",
+      "references": [],
+      "title": "Validate it is open API and version 3.x.x"
+    }
+  ],
+  "in-progress": [],
+  "testing": [],
+  "done": []
+}
